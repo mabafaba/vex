@@ -38,7 +38,7 @@ const User = require("./js/users.model")
 
 
 
-const connectDB = require("./js/users.db"); // not required if a db connection exists
+// const connectDB = require("./js/users.db"); // not required if a db connection exists
 // connectDB(); 
 
 
@@ -48,7 +48,7 @@ if (!superAdmin) {
     console.log("Superadmin user does not exist. Creating one...");
     // check if a password was passed as // pass environment varibale to docker compose up:
     /// docker-compose up -e SUPERADMIN_PASSWORD=yourpassword
-    const password = process.env.SUPERADMIN_DEFAULT_PASSWORD;
+    let password = process.env.SUPERADMIN_DEFAULT_PASSWORD;
     if (!password) {
     password = await new Promise((resolve) => {
         readline.question("Enter superadmin password: ", resolve);
@@ -69,6 +69,13 @@ if (!superAdmin) {
     // console.log("Superadmin user already exists.");
 }
 }
+
+sendUnauthorizedStatus = (req, res, next) => {
+    if(!req.authorized){
+    res.status(401).send("Unauthorized");
+    }
+}
+
 
 ensureSuperAdmin().then(() => readline.close());
 
@@ -99,8 +106,8 @@ const user = {
     authorizeAdmin, 
     authorizeBasic,
     authorizeToken,
-    User,
-    connectDB
+    User
+    // connectDB
 }
 
     

@@ -1,6 +1,6 @@
-fs = require('fs');
-mongoose = require('mongoose');
-GeoJsonFeature = require('./geoJsonFeature.model')
+const fs = require('fs');
+const mongoose = require('mongoose');
+const GeoJsonFeature = require('./geoJsonFeature.model')
 
 async function importGeoJson(mongo_uri, database_name, collection_name, geojson_file_path) {
     let client;

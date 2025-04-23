@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("./users.model");
+const user = require("..");
 require('dotenv').config();
 // const jwtSecret = "4715aed3c946f7b0a38e6b534a9583628d84e96d10fbc04700770d572af3dce43625dd";
 const jwtSecret = process.env.JWT_SECRET;
@@ -43,87 +44,77 @@ async function authorizeToken (token, allowedRoles = ["admin", "basic"]) {
 // adds to req.body:
 // req.body.authorized - true/false
 // req.body.user - decoded token or null
-function auth (req, res, next) {
+function auth(condition, onDenial) {
+  return async (req, res, next) => {
+    const token = req.cookies.jwt;
 
-  const token = req.cookies.jwt;
-  
-  if(!req.body){req.body = {};}
+    if (!req.body) {
+      req.body = {};
+    }
 
-  if (token) {
-    jwt.verify(token, jwtSecret, async (err, decodedToken) => {
-      console.log("decodedToken", decodedToken);
-      if (err) {
+    if(!token) {
+      req.body.authorized = false;
+      req.body.user = null;
+      req.body.unAuthorizedMessage = "Not authorized, token not available";
+      return onDenial(req, res);
+    }
+
+      try {
+        const decodedToken = jwt.verify(token, jwtSecret);
+        console.log("decodedToken", decodedToken);
+      } catch (err) {
         req.body.authorized = false;
         req.body.user = null;
-        // this middlewear function only checks if token is valid, and adds verified user to req.body or adds to req.authorized = false
-        // it does not send a response, so that the route handler can send a response
-        next();
-        return;
-
-      } else {
-        // log roles
-        console.log("req.authorizedRoles", req.authorizedRoles);
-        console.log("decodedToken.role", decodedToken.role);
-
-        // is any user role in array of authorized roles?
-        // if user role is an array:
-        if(Array.isArray(decodedToken.role)){
-
+        req.body.unAuthorizedMessage = "Not authorized, decoding error";
+        return onDenial(req, res);
+      }
       
-        userHasOneOfAuthorizedRoles = req.authorizedRoles.some(role => decodedToken.role.includes(role));
-        console.log("userHasOneOfAuthorizedRoles", userHasOneOfAuthorizedRoles);
-        } else {
-          userHasOneOfAuthorizedRoles = req.authorizedRoles.includes(decodedToken.role);
-          console.log("userHasOneOfAuthorizedRoles (no array)", userHasOneOfAuthorizedRoles);
 
-        }
+        
 
-        console.log("userHasOneOfAuthorizedRole further", userHasOneOfAuthorizedRoles);
-
-        if (userHasOneOfAuthorizedRoles) {
-          // get .data from user if it exists
-          console.log("userHasOneOfAuthorizedRoles true");
-          
-          req.body.user = decodedToken;
-          userData = await User.findById(decodedToken.id)
-          if(userData){req.body.user = {id:userData._id, name: userData.username, role:userData.role};}
+        if (condition(req.body.user)) {
           req.body.authorized = true;
-          next();
-          return;
+          const userData = await User.findById(decodedToken.id);
+            if (userData) {
+              req.body.user = { id: userData._id, name: userData.username, role: userData.role };
+            } else {
+              req.body.user = decodedToken;
+            }
+          return next();
         } else {
-          // return res.status(401).json({ message: "Not authorized, must be one of " + req.authorizedRoles });
-          // instead, add to req.body and let route handler send response
           req.body.authorized = false;
           req.body.user = null;
-          next();
-          return;
+          return onDenial(req, res);
         }
-      }
-    });
-  } else {
-    req.body.authorized = false;
-    req.body.user = null;
-    next()
-    return;
-  }
-};
+  };
+}
 
 // admin auth function
 
-function authorizeAdmin (req, res, next) {
-  req.authorizedRoles = ["superadmin"];
-  console.log("authorizeAdmin");
-  auth(req, res, next);
+function hasRole (user, role) {
+  if (Array.isArray(user.role)) {
+    return user.role.includes(role);
+  } else {
+    return user.role === role;
+  }
 }
+
+function sendUnauthorizedStatus(req, res) {
+  req.body.authorized = false;
+  req.body.user = null;
+  res.status(401).send("Unauthorized");
+}
+
+const authorizeAdmin = auth(
+  condition = user => {user.roles.includes("admin")},
+  onDenial = sendUnauthorizedStatus) 
 
 // basic auth function
 
-function authorizeBasic (req, res, next) {
-  console.log("authorizeBasic");
-  
-  req.authorizedRoles = ["superadmin", "admin", "basic"];
-  auth(req, res, next);
-}
+const authorizeBasic = auth(
+  condition = user => {user.roles.includes("basic")},
+  onDenial = sendUnauthorizedStatus)
+// token auth function  
 
 
 // export as single object

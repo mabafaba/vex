@@ -9,19 +9,18 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 // if collection is empty, import data
-GeoJsonFeature.countDocuments({}).then((count) => {
-    if (count === 0) {
-        importGeoJson(
-            'mongodb://localhost:27017/aovi',
-            'aovi',
-            'geojson',
-            '/../../aovi/client/brazil_admin_boundaries.geojson'
-        );
-    }
-});
+// GeoJsonFeature.countDocuments({}).then((count) => {
+//     if (count === 0) {
+//         importGeoJson(
+//             'mongodb://localhost:27017/vex',
+//             'vex',
+//             'geojson',
+//             '/../../vex/client/brazil_admin_boundaries.geojson'
+//         );
+//     }
+// });
 
 // get all
-
 router.get('/', async (req, res) => {
     GeoJsonFeature.find({})
         .then((features) => {

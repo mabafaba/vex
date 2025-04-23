@@ -1,2 +1,1 @@
-# aovi
-live event participation platform
+# vex

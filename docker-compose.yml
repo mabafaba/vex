@@ -3,8 +3,8 @@ services:
   web:
     depends_on:
       - mongodb
-    image: aovi
-    container_name: aovi-web
+    image: vex
+    container_name: vex-web
     ports:
     # 3000:3000
       - "1041:3000"
@@ -17,11 +17,11 @@ services:
     restart: always
   mongodb:
     image: mongo
-    container_name: aovi-mongodb
+    container_name: vex-mongodb
     restart: always
     volumes:
-      - aovi-mongodb-data:/data/db
+      - vex-mongodb-data:/data/db
 
 volumes:
-  aovi-mongodb-data:
+  vex-mongodb-data:
   jwt_secret_volume:
