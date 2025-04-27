@@ -1,7 +1,3 @@
-
-
-
-
 class AuthenticationForm extends HTMLElement {
     constructor() {
         super();
@@ -238,9 +234,16 @@ class LoginForm extends HTMLElement {
                 });
                 const data = await res.json();
                 if (res.status === 400 || res.status === 401) {
-                    return this.display.textContent = `${data.message}. ${data.error ? data.error : ''}`;
+                    return this.display.textContent = `${data.message}. ${data.error ? data.error : ''}`; 
                 }
-                location.assign(targeturl);
+                // Dispatch a custom event to notify successful login
+                const loginSuccessEvent = new CustomEvent('login-success', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { user: data }
+                });
+                this.dispatchEvent(loginSuccessEvent);
+                // location.assign(targeturl);
             } catch (err) {
                 console.log(err.message);
             }
@@ -380,7 +383,14 @@ class RegistrationForm extends HTMLElement {
                     const targeturl = this.getAttribute('target-url') || '/';
                     console.log('logged in', data);
                     console.log('redirecting to', targeturl);
-                    location.assign(targeturl);
+                    // Dispatch a custom event to notify successful login after registration
+                    const loginSuccessEvent = new CustomEvent('login-success', {
+                        bubbles: true,
+                        composed: true,
+                        detail: { user: data }
+                    });
+                    this.dispatchEvent(loginSuccessEvent);
+                    // location.assign(targeturl);
 
                 } else if (res.status === 400 || res.status === 401) {
                     display.textContent = `${data.message}. ${data.error ? data.error : ''}`;

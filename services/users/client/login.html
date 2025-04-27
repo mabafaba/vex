@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - VEX</title>
+    <script src="/vex/users/client/authForm.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #f5f5f7;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <!-- You can add your logo here -->
+            <h1>VEX</h1>
+        </div>
+        
+        <authentication-form 
+            login-endpoint="/vex/user/login" 
+            register-endpoint="/vex/user/register"
+            target-url="/">
+        </authentication-form>
+        
+        <a href="/" class="back-link">Return to Home</a>
+    </div>
+
+    <script>
+        // Get target URL from query parameter if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUrl = urlParams.get('targetUrl');
+        
+        if (targetUrl) {
+            // Set the target URL for redirection after successful login
+            const authForm = document.querySelector('authentication-form');
+            authForm.setAttribute('target-url', targetUrl);
+        }
+    </script>
+</body>
+</html>

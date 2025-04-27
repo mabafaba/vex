@@ -22,7 +22,7 @@ router.route("/login").post(loginUser);
 router.route("/update").put(authorizeAdmin, sendUnauthorizedStatus, updateUser);
 router.route("/delete").delete(authorizeAdmin, sendUnauthorizedStatus, deleteUser);
 router.route("/all").get(authorizeAdmin, sendUnauthorizedStatus, getAllUsers);
-router.route("/me").get(authorizeBasic, 
+router.route("/me").get(authorizeBasic,
   // unauthorized users 401
   (req, res) => {
     if (req.body.authorized) {
@@ -33,7 +33,7 @@ router.route("/me").get(authorizeBasic,
   },
   getUser);
 
-  // authorize route
+  // authorize routes
   router.route('/authorize/:role').get((req,res, next)=>{
     req.authorizedRoles = [req.params.role];
     next();

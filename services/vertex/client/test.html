@@ -1,75 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vex Component Test</title>
+
     <!-- Include Socket.io client library with direct URL to ensure proper loading -->
     <script src="http://localhost:3005/socket.io/socket.io.js"></script>
     <script>
-        // Add debugging for Socket.io connection
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('Checking if Socket.io is loaded:', typeof io !== 'undefined');
-        });
+      // Add debugging for Socket.io connection
+      window.addEventListener("DOMContentLoaded", () => {
+        console.log(
+          "Checking if Socket.io is loaded:",
+          typeof io !== "undefined"
+        );
+      });
     </script>
     <script src="./vexcomponent.js"></script>
     <script src="./vexinputcomponent.js"></script>
     <script src="./geoscaleinputcomponent.js"></script>
+    <script src="./vexbreadcrumbs.js"></script>
+    <script src="./vexlist.js"></script>
+    <script src="./vexreactions.js"></script>
+    <script src="./vexthread.js"></script>
+    <script src="/vex/user/static/authForm.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 30px;
-            background: #acc3c5;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px;
+        background: #defcfe;
+      }
+
+      vex-display {
+        background: rgb(224, 172, 247);
+      }
+      .auth-buttons {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+      }
+      .auth-buttons a {
+        display: inline-block;
+        padding: 8px 15px;
+        background-color: #4285f4;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-left: 10px;
+      }
+      .auth-buttons a:hover {
+        background-color: #3367d6;
+      }
     </style>
-</head>
-<body>
-    <!-- The component will load itself using the vex-id attribute -->
-    <vex-display vex-id="67e9be3f916e679e97067e66" view-mode="thread"></vex-display>
-    
-    <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">
-        Socket.io: <span id="socket-status">Checking...</span>
+  </head>
+  <body>
+    <div class="auth-buttons">
+      <a href="/login">Login</a>
     </div>
+    <vex-thread id="main-vex-thread"></vex-thread>
+
+    <!-- <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">
+        Socket.io: <span id="socket-status">Checking...</span>
+    </div> -->
 
     <script>
-        // Simple connection indicator
-        function updateConnectionStatus() {
-            const statusSpan = document.getElementById('socket-status');
-            if (typeof io === 'undefined') {
-                statusSpan.textContent = 'Library not loaded';
-                statusSpan.style.color = 'red';
-                return;
-            }
-            
-            const socket = io(window.location.hostname + ':3005', {
-                path: '/socket.io',
-                transports: ['websocket', 'polling'],
-                autoConnect: false
-            });
-            
-            socket.on('connect', () => {
-                statusSpan.textContent = 'Connected';
-                statusSpan.style.color = 'green';
-            });
-            
-            socket.on('connect_error', (error) => {
-                statusSpan.textContent = `Error: ${error.message}`;
-                statusSpan.style.color = 'red';
-                console.error('Socket connection error:', error);
-            });
-            
-            socket.on('disconnect', () => {
-                statusSpan.textContent = 'Disconnected';
-                statusSpan.style.color = 'orange';
-            });
-            
-            socket.connect();
-        }
-        
-        // Update connection status after a short delay
-        setTimeout(updateConnectionStatus, 1000);
+      const urlParams = new URLSearchParams(window.location.search);
+      let vexId = urlParams.get("id");
+      if (!vexId) {
+        console.error("No vex id provided in the URL");
+        vexId = "67e9be5a916e679e97067e6c";
+      }
+      // Set vex-id on the new component
+      const thread = document.getElementById("main-vex-thread");
+      thread.setAttribute("vex-id", vexId);
+      // Optionally, listen for navigation events if you want to react to thread changes
     </script>
-</body>
+  </body>
 </html>

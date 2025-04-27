@@ -46,46 +46,53 @@ async function authorizeToken (token, allowedRoles = ["admin", "basic"]) {
 // req.body.user - decoded token or null
 function auth(condition, onDenial) {
   return async (req, res, next) => {
+    console.log("in auth middleware");
     const token = req.cookies.jwt;
+    console.log("token", token);
 
     if (!req.body) {
       req.body = {};
     }
 
+    console.log("token", token);  
     if(!token) {
       req.body.authorized = false;
       req.body.user = null;
       req.body.unAuthorizedMessage = "Not authorized, token not available";
+      console.log("token not available");
       return onDenial(req, res);
     }
+    let decodedToken = null;
 
-      try {
-        const decodedToken = jwt.verify(token, jwtSecret);
-        console.log("decodedToken", decodedToken);
-      } catch (err) {
-        req.body.authorized = false;
-        req.body.user = null;
-        req.body.unAuthorizedMessage = "Not authorized, decoding error";
-        return onDenial(req, res);
-      }
+    try {
+      decodedToken = jwt.verify(token, jwtSecret);
+      console.log("decodedToken", decodedToken);
+    } catch (err) {
+      req.body.authorized = false;
+      req.body.user = null;
+      req.body.unAuthorizedMessage = "Not authorized, decoding error";
+      console.log("decoding error", err);
+      return onDenial(req, res);
+    }
       
-
-        
-
-        if (condition(req.body.user)) {
-          req.body.authorized = true;
-          const userData = await User.findById(decodedToken.id);
-            if (userData) {
-              req.body.user = { id: userData._id, name: userData.username, role: userData.role };
-            } else {
-              req.body.user = decodedToken;
-            }
-          return next();
-        } else {
-          req.body.authorized = false;
-          req.body.user = null;
-          return onDenial(req, res);
-        }
+    if (condition(decodedToken)) {
+      req.body.authorized = true;
+      console.log("condition success");
+      const userData = await User.findById(decodedToken.id);
+      if (userData) {
+        req.body.user = { id: userData._id, name: userData.username, role: userData.role };
+        console.log("user data found", userData);
+      } else {
+        req.body.user = decodedToken;
+        console.log("user data not found", decodedToken);
+      }
+      return next();
+    } else {
+      req.body.authorized = false;
+      req.body.user = null;
+      console.log("condition failed");
+      return onDenial(req, res);
+    }
   };
 }
 
@@ -102,19 +109,24 @@ function hasRole (user, role) {
 function sendUnauthorizedStatus(req, res) {
   req.body.authorized = false;
   req.body.user = null;
-  res.status(401).send("Unauthorized");
+  res.status(401).send({
+    success: false,
+    message: "Unauthorized"
+  });
 }
 
 const authorizeAdmin = auth(
-  condition = user => {user.roles.includes("admin")},
+  condition = user => {return user.role.includes("admin")},
   onDenial = sendUnauthorizedStatus) 
 
 // basic auth function
 
 const authorizeBasic = auth(
-  condition = user => {user.roles.includes("basic")},
+  condition = user => {return(user.role.includes("basic"))},
   onDenial = sendUnauthorizedStatus)
 // token auth function  
+
+
 
 
 // export as single object
