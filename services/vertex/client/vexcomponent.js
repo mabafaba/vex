@@ -1,42 +1,45 @@
-// Shared Socket.io connection, initialized once and reused
-let vexSocket = null;
 
 class VexComponent extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this.state = {
-            vex: null,
-            viewMode: 'normal', // 'collapsed', 'normal', 'thread'
-        };
-    }
+  constructor () {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.state = {
+      vex: null,
+      viewMode: 'normal' // 'collapsed', 'normal', 'thread'
+    };
+  }
 
-    // Accept vex data only via property
-    set vex(vexObj) {
-        this.state.vex = vexObj;
+  // Accept vex data only via property
+  set vex (vexObj) {
+    console.log('vexObj', vexObj);
+    console.log('vexObj.userReactions', vexObj.userReactions);
+    console.log('stringified', JSON.stringify(vexObj.userReactions));
+    this.state.vex = vexObj;
+    this.render();
+  }
+  get vex () {
+    return this.state.vex;
+  }
+
+  static get observedAttributes () {
+    return ['view-mode']; // Only observe view-mode
+  }
+
+  attributeChangedCallback (name, oldValue, newValue) {
+    if (name === 'view-mode' && oldValue !== newValue && oldValue !== null) {
+      this.setViewMode(newValue);
+      if (newValue === 'thread' && (oldValue !== 'thread' && oldValue !== 'breadcrumb')) {
         this.render();
+      }
     }
-    get vex() {
-        return this.state.vex;
-    }
+  }
 
-    static get observedAttributes() {
-        return ['view-mode']; // Only observe view-mode
+  render () {
+    const { vex, viewMode } = this.state;
+    if (!vex) {
+      return;
     }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'view-mode' && oldValue !== newValue && oldValue !== null) {
-            this.setViewMode(newValue);
-            if(newValue === 'thread' && (oldValue !== 'thread' && oldValue !== 'breadcrumb')) {
-                this.render();
-            }
-        }
-    }
-
-    render() {
-        const { vex, viewMode } = this.state;
-        if (!vex) return;
-        this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = `
             <style>
                 vex-display {
                     background:rgb(244, 222, 253);
@@ -165,90 +168,73 @@ class VexComponent extends HTMLElement {
             <div class="vex">
                 <div class="vex-main">
                     <div id="vex-content">${vex.content}</div>
-                    <vex-reactions></vex-reactions>
+                    <vex-reactions
+                      vex-id="${vex._id}"
+                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions>
                 </div>
             </div>
         `;
-        console.log('setting view mode in render', this.state.viewMode)
-        this.addEventListeners();
-        this.entranceAnimation();
-        // Set the correct class for view mode
-        const vexDiv = this.shadowRoot.querySelector('.vex');
-        if (vexDiv) {
-            vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
-            vexDiv.classList.add(this.state.viewMode);
-        }
+
+    this.addEventListeners();
+    this.entranceAnimation();
+    // Set the correct class for view mode
+    const vexDiv = this.shadowRoot.querySelector('.vex');
+    if (vexDiv) {
+      vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
+      vexDiv.classList.add(this.state.viewMode);
     }
-    
-    // Event handling and lifecycle
-    setViewModeAttribute(mode) {
-        this.setAttribute('view-mode', mode);
-    }
+  }
 
+  // Event handling and lifecycle
+  setViewModeAttribute (mode) {
+    this.setAttribute('view-mode', mode);
+  }
 
-    addEventListeners() {
-        const vexElement = this.shadowRoot.querySelector('.vex');
-        // Remove any existing click listeners to prevent duplicates
-        const newElement = vexElement.cloneNode(true);
-        vexElement.parentNode.replaceChild(newElement, vexElement);
-        // Get reference to the new element
-        const updatedVexElement = this.shadowRoot.querySelector('.vex-main');
-        // Add default click handler
-        updatedVexElement.addEventListener('click', e => {
-            // Emit custom event with vex id (no bubbling, no composition)
-            this.dispatchEvent(new CustomEvent('vex-main-click', {
-                detail: { vexId: this.state.vex?._id },
-                bubbles: false,
-                composed: false
-            }));
+  addEventListeners () {
+    const vexElement = this.shadowRoot.querySelector('.vex');
+    // Remove any existing click listeners to prevent duplicates
+    const newElement = vexElement.cloneNode(true);
+    vexElement.parentNode.replaceChild(newElement, vexElement);
+    // Get reference to the new element
+    const updatedVexElement = this.shadowRoot.querySelector('.vex-main');
+    // Add default click handler
+    updatedVexElement.addEventListener('click', e => {
+      // Emit custom event with vex id (no bubbling, no composition)
+      this.dispatchEvent(new CustomEvent('vex-main-click', {
+        detail: { vexId: this.state.vex?._id },
+        bubbles: false,
+        composed: false
+      }));
+    });
+  }
 
-        });
-        // Handle reaction events
-        const reactions = this.shadowRoot.querySelector('vex-reactions');
-        if (reactions) {
-            reactions.addEventListener('upvote', () => console.log('Upvoted'));
-            reactions.addEventListener('downvote', () => console.log('Downvoted'));
-            reactions.addEventListener('share', () => console.log('Shared'));
-            reactions.addEventListener('open', () => {
-                const url = `/vex/vertex/static/test.html?id=${this.state.vex?._id}`;
-                window.open(url);
-            });
-            reactions.addEventListener('collapse', () => {
-                this.setViewMode('collapsed');
-            });
+  async connectedCallback () {
+    this.state.viewMode = this.getAttribute('view-mode') || 'normal';
+    this.render();
+    this.entranceAnimation();
+  }
 
-            reactions.addEventListener('bread', () => {
-                console.log('Breadcrumb clicked');
-                this.setViewMode('breadcrumb');
-            }   );
-        }
+  disconnectedCallback () {
+    // No more socket logic needed
+  }
+
+  entranceAnimation () {
+    const element = this.shadowRoot.querySelector('.vex-main');
+    if (!element) {
+      return;
     }
 
-    async connectedCallback() {
-        this.state.viewMode = this.getAttribute('view-mode') || 'normal';
-        this.render();
-        this.entranceAnimation();
-    }
+    // Add ounce and gloss animation
+    element.style.animation = 'bounceAndGloss 0.3s ease-in-out';
 
-    disconnectedCallback() {
-        // No more socket logic needed
-    }
+    // Remove the animation class after it completes to allow retriggering
+    element.addEventListener('animationend', () => {
+      element.style.animation = '';
+    });
 
-    entranceAnimation(){
-        const element = this.shadowRoot.querySelector('.vex-main');
-        if (!element) return;
-
-        // Add ounce and gloss animation
-        element.style.animation = 'bounceAndGloss 0.3s ease-in-out';
-
-        // Remove the animation class after it completes to allow retriggering
-        element.addEventListener('animationend', () => {
-            element.style.animation = '';
-        });
-
-        // Define the keyframes for the animation
-        const style = document.createElement('style');
-        style.textContent = `
+    // Define the keyframes for the animation
+    const style = document.createElement('style');
+    style.textContent = `
             @keyframes bounceAndGloss {
                 0% {
                     transform: scale(1);
@@ -265,19 +251,19 @@ class VexComponent extends HTMLElement {
             }
 
         `;
-        this.shadowRoot.appendChild(style);
-    }
+    this.shadowRoot.appendChild(style);
+  }
 
-    // Restore changeViewMode for class updates only (no data fetching or rendering)
-    setViewMode(to) {
-        this.state.viewMode = to;
-        const vexDiv = this.shadowRoot.querySelector('.vex');
-        if (!vexDiv) return;
-        vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
-        vexDiv.classList.add(to);
+  // Restore changeViewMode for class updates only (no data fetching or rendering)
+  setViewMode (to) {
+    this.state.viewMode = to;
+    const vexDiv = this.shadowRoot.querySelector('.vex');
+    if (!vexDiv) {
+      return;
     }
-    
-
+    vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
+    vexDiv.classList.add(to);
+  }
 }
 
 customElements.define('vex-display', VexComponent);

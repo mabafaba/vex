@@ -16,6 +16,7 @@
         );
       });
     </script>
+    
     <script src="./vexcomponent.js"></script>
     <script src="./vexinputcomponent.js"></script>
     <script src="./geoscaleinputcomponent.js"></script>
@@ -24,6 +25,8 @@
     <script src="./vexreactions.js"></script>
     <script src="./vexthread.js"></script>
     <script src="/vex/user/static/authForm.js"></script>
+    <script src="/vex/user/static/userstatus.js"></script>
+    <script src="/vex/utils/reactiveglobalstate.js"></script>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -57,9 +60,16 @@
     </style>
   </head>
   <body>
-    <div class="auth-buttons">
+    <!-- <div class="auth-buttons">
       <a href="/login">Login</a>
-    </div>
+    </div> -->
+    <user-status
+      me-endpoint="/vex/user/me"
+      logout-endpoint="/vex/user/logout"
+      login-endpoint="/vex/user/login"
+      register-endpoint="/vex/user/register"
+    >
+    </user-status>
     <vex-thread id="main-vex-thread"></vex-thread>
 
     <!-- <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">

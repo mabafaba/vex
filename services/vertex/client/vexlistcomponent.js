@@ -1,34 +1,34 @@
 class VexList extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this.state = {
-            parent : null,
-            children: [], // Array of vex objects
-        };
-    }
+  constructor () {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.state = {
+      parent : null,
+      children: [] // Array of vex objects
+    };
+  }
 
-    set parent(data) {
-        this.state.parent = data;
-        this.render();
-    }
-    get parent() {
-        return this.state.parent;
-    }
+  set parent (data) {
+    this.state.parent = data;
+    this.render();
+  }
+  get parent () {
+    return this.state.parent;
+  }
 
-    set children(data) {
-        this.state.children = data;
-        this.render();
-    }
+  set children (data) {
+    this.state.children = data;
+    this.render();
+  }
 
-    get children() {
-        return this.state.items;
-    }
+  get children () {
+    return this.state.items;
+  }
 
-    render() {
-        const { children } = this.state;
+  render () {
+    const { children } = this.state;
 
-        this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     display: block;
@@ -50,24 +50,24 @@ class VexList extends HTMLElement {
             </div>
         `;
 
-        this.populateItems();
-    }
+    this.populateItems();
+  }
 
-    populateItems() {
-        const { items, parent } = this.state;
+  populateItems () {
+    const { items, parent } = this.state;
 
-        items.forEach((item, index) => {
-            const vexDisplay = this.shadowRoot.getElementById(`vex-${index}`);
-            if (vexDisplay) {
-                vexDisplay.vex = item;
-                vexDisplay.setViewMode('collapsed');
-            }
-        });
-    }
+    items.forEach((item, index) => {
+      const vexDisplay = this.shadowRoot.getElementById(`vex-${index}`);
+      if (vexDisplay) {
+        vexDisplay.vex = item;
+        vexDisplay.setViewMode('collapsed');
+      }
+    });
+  }
 
-    connectedCallback() {
-        this.render();
-    }
+  connectedCallback () {
+    this.render();
+  }
 }
 
 customElements.define('vex-list', VexList);

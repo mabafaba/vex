@@ -7,15 +7,20 @@
     "docker": "docker build -t vex . && docker compose up",
     "deploy": "git pull && docker build -t vex . && docker compose up",
     "dev": "nodemon server.js",
-    "watch": "browser-sync start --proxy 'localhost:3000' --watch true"
+    "watch": "browser-sync start --proxy 'localhost:3000' --watch true",
+    "lint": "eslint . --fix"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/eslint-parser": "^7.27.0",
+    "eslint": "^8.57.1",
     "nodemon": "^3.1.9"
   },
   "dependencies": {
+    "@casl/ability": "^6.7.3",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",

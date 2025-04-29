@@ -1,16 +1,16 @@
 // New web component that combines breadcrumbs, main vex, input, and child list
 class VexThread extends HTMLElement {
-  constructor() {
+  constructor () {
     super();
     this.attachShadow({ mode: 'open' });
     this.vexId = null;
   }
 
-  static get observedAttributes() {
+  static get observedAttributes () {
     return ['vex-id'];
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
+  attributeChangedCallback (name, oldValue, newValue) {
     if (name === 'vex-id' && newValue !== oldValue) {
       this.vexId = newValue;
       this.render();
@@ -18,7 +18,7 @@ class VexThread extends HTMLElement {
     }
   }
 
-  connectedCallback() {
+  connectedCallback () {
     if (this.hasAttribute('vex-id')) {
       this.vexId = this.getAttribute('vex-id');
     }
@@ -26,7 +26,7 @@ class VexThread extends HTMLElement {
     this.updateAll();
   }
 
-  render() {
+  render () {
     this.shadowRoot.innerHTML = `
       <style>
         :host { display: block; }
@@ -40,14 +40,16 @@ class VexThread extends HTMLElement {
       </div>
     `;
     // Listen for breadcrumb navigation
-    this.shadowRoot.getElementById('breadcrumbs').addEventListener('crumb-click', (event) => {
-      const clickedVexId = event.detail.vexId;
-      this.setAttribute('vex-id', clickedVexId);
-      // Optionally update URL
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('id', clickedVexId);
-      window.history.pushState({}, '', newUrl);
-    });
+    this.shadowRoot
+      .getElementById('breadcrumbs')
+      .addEventListener('crumb-click', (event) => {
+        const clickedVexId = event.detail.vexId;
+        this.setAttribute('vex-id', clickedVexId);
+        // Optionally update URL
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('id', clickedVexId);
+        window.history.pushState({}, '', newUrl);
+      });
     // Listen for clicks on vex-list items (if you emit events from vex-list)
     // You may need to forward events from vex-display in vex-list for this to work
     this.shadowRoot.getElementById('vex-list').onClick = (event) => {
@@ -58,26 +60,41 @@ class VexThread extends HTMLElement {
         window.history.pushState({}, '', newUrl);
       }
     };
+    // add event listener for vex-list-unauthorized
+    const vexList = this.shadowRoot.getElementById('vex-list');
+    console.log('adding vex-list-unauthorized listener');
+    vexList.addEventListener('vex-list-unauthorized', () => {
+      console.log('vex-list-unauthorized event received');
+      this.shadowRoot.innerHTML = '';
+    });
   }
 
-  async updateAll() {
-    if (!this.vexId) return;
+  async updateAll () {
+    if (!this.vexId) {
+      return;
+    }
     // Update breadcrumbs
     const breadcrumbs = this.shadowRoot.getElementById('breadcrumbs');
     breadcrumbs.setAttribute('vex-id', this.vexId);
     // Update main vex
     try {
       const response = await fetch(`/vex/vertex/${this.vexId}`);
-      if (!response.ok) throw new Error('Failed to fetch vex');
+      if (!response.ok) {
+        throw new Error('Failed to fetch vex');
+      }
       const vex = await response.json();
       this.shadowRoot.getElementById('main-vex').vex = vex;
     } catch (e) {
       // Optionally show error
     }
     // Update input
-    this.shadowRoot.getElementById('vex-input').setAttribute('parent-vex', this.vexId);
+    this.shadowRoot
+      .getElementById('vex-input')
+      .setAttribute('parent-vex', this.vexId);
     // Update list
-    this.shadowRoot.getElementById('vex-list').setAttribute('parent-vex', this.vexId);
+    this.shadowRoot
+      .getElementById('vex-list')
+      .setAttribute('parent-vex', this.vexId);
   }
 }
 

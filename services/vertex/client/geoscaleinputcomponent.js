@@ -1,9 +1,9 @@
 class GeoTextInputComponent extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        
-        this.shadowRoot.innerHTML = `
+  constructor () {
+    super();
+    this.attachShadow({ mode: 'open' });
+
+    this.shadowRoot.innerHTML = `
             <style>
                 .vex-container {
                     display: flex;
@@ -76,53 +76,53 @@ class GeoTextInputComponent extends HTMLElement {
             </div>
         `;
 
-        this.shadowRoot.querySelector('#sendButton').addEventListener('click', () => this.sendVex());
+    this.shadowRoot.querySelector('#sendButton').addEventListener('click', () => this.sendVex());
+  }
+
+  connectedCallback () {
+    // get parent-vex from attribute, or if not set, set to empty array
+    this.parents = JSON.parse(this.getAttribute('parent-vex')) || [];
+  }
+
+  // listen for changes in the parent-vex attribute
+  static get observedAttributes () {
+    return ['parent-vex'];
+  }
+  attributeChangedCallback (name, oldValue, newValue) {
+    if (name === 'parent-vex') {
+      this.parents = JSON.parse(newValue);
+    }
+  }
+
+  async sendVex () {
+    const content = this.shadowRoot.querySelector('#vexContent').value.trim();
+    if (!content) {
+      alert('Content cannot be empty!');
+      return;
     }
 
-    connectedCallback() {
-        // get parent-vex from attribute, or if not set, set to empty array
-        this.parents = JSON.parse(this.getAttribute('parent-vex')) || [];
+    try {
+      const response = await fetch('/vex/vertex', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content, parents: this.parents })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to send vex');
+      }
+
+      console.log(response);
+
+      const result = await response.json();
+      this.shadowRoot.querySelector('#vexContent').value = '';
+    } catch (error) {
+      alert(`Error: ${error.message}`);
     }
-
-    // listen for changes in the parent-vex attribute
-    static get observedAttributes() {
-        return ['parent-vex'];
-    }
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (name === 'parent-vex') {
-            this.parents = JSON.parse(newValue);
-        }
-    }
-
-    async sendVex() {
-        const content = this.shadowRoot.querySelector('#vexContent').value.trim();
-        if (!content) {
-            alert('Content cannot be empty!');
-            return;
-        }
-
-        try {
-            const response = await fetch('/vex/vertex', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ content, parents: this.parents }),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to send vex');
-            }
-
-            console.log(response);
-
-            const result = await response.json();
-            this.shadowRoot.querySelector('#vexContent').value = '';
-        } catch (error) {
-            alert(`Error: ${error.message}`);
-        }
-    }
+  }
 }
 
 customElements.define('placed-text-input', GeoTextInputComponent);

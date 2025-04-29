@@ -1,89 +1,102 @@
 // Generic <vex-list> web component for rendering a list of vex objects
+
 class VexList extends HTMLElement {
-  constructor() {
+  constructor () {
     super();
-    this.attachShadow({ mode: "open" });
+    this.attachShadow({ mode: 'open' });
     this._vexes = [];
-    this._viewMode = "normal";
+    this._viewMode = 'normal';
     this._parentVex = null;
     this._socket = null;
     this._onClick = () => {};
+    this._connectionListener = null;
   }
 
-  static get observedAttributes() {
-    return ["parent-vex", "view-mode"];
+  static get observedAttributes () {
+    return ['parent-vex', 'view-mode'];
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === "parent-vex" && oldValue !== newValue) {
-      console.log("Parent vex changed:", newValue);
+  attributeChangedCallback (name, oldValue, newValue) {
+    if (name === 'parent-vex' && oldValue !== newValue) {
+      console.log('Parent vex changed:', newValue);
       this.parentVex = newValue;
     }
-    if (name === "view-mode" && oldValue !== newValue) {
+    if (name === 'view-mode' && oldValue !== newValue) {
       this.viewMode = newValue;
     }
   }
 
-  set onClick(callback) {
+  set onClick (callback) {
     this._onClick = callback;
     // remove old event listener
-    const vexDisplays = this.shadowRoot.querySelectorAll("vex-display");
+    const vexDisplays = this.shadowRoot.querySelectorAll('vex-display');
     vexDisplays.forEach((vexDisplay) => {
-      vexDisplay.removeEventListener("vex-main-click", this._onClick);
+      vexDisplay.removeEventListener('vex-main-click', this._onClick);
     });
     // add new event listener
     vexDisplays.forEach((vexDisplay) => {
-      vexDisplay.addEventListener("vex-main-click", this._onClick);
+      vexDisplay.addEventListener('vex-main-click', this._onClick);
     });
   }
 
-  set parentVex(val) {
-    console.log("Setting parent vex:", val);
-    console.log("Current parent vex:", this._parentVex);
-    if (this._parentVex === val) return;
+  set parentVex (val) {
+    console.log('Setting parent vex:', val);
+    console.log('Current parent vex:', this._parentVex);
+    if (this._parentVex === val) {
+      return;
+    }
 
     if (!this._socket) {
       this.setupSocket();
     }
     if (this._parentVex) {
-      console.log("Leaving vex room:", this._parentVex);
+      console.log('Leaving vex room:', this._parentVex);
       this.leaveRoom(this._parentVex);
     }
     if (val) {
-      console.log("joinRoom Joining vex room:", val);
+      console.log('joinRoom Joining vex room:', val);
       this.joinRoom(val);
     }
     this._parentVex = val;
     this.fetchVexes();
   }
 
-  get parentVex() {
+  get parentVex () {
     return this._parentVex;
   }
 
-  set vexes(list) {
+  set vexes (list) {
     this._vexes = Array.isArray(list) ? list : [];
     this.render();
   }
 
-  get vexes() {
+  get vexes () {
     return this._vexes;
   }
 
-  set viewMode(mode) {
+  set viewMode (mode) {
     this._viewMode = mode;
     this.render();
   }
 
-  get viewMode() {
+  get viewMode () {
     return this._viewMode;
   }
 
-  async fetchVexes() {
-    if (!this._parentVex) return;
+  async fetchVexes () {
+    if (!this._parentVex) {
+      return;
+    }
     try {
       const response = await fetch(`/vex/vertex/${this._parentVex}/children`);
-      if (!response.ok) throw new Error("Failed to fetch children");
+      console.log('fetchVexes response status:', response.status);
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('dispatching vex-list-unauthorized event');
+          this.dispatchEvent(new CustomEvent('vex-list-unauthorized'));
+        }
+        throw new Error('Failed to fetch children');
+      }
       const children = await response.json();
       this._vexes = children;
       this.render();
@@ -93,45 +106,67 @@ class VexList extends HTMLElement {
     }
   }
 
-  setupSocket() {
+  setupSocket () {
     if (!window.io) {
-      console.error("Socket.io not available");
+      console.error('Socket.io not available');
       return;
     }
-    if (!this._socket) {
-      this._socket = io(window.location.hostname + ":3005", {
-        transports: ["websocket", "polling"],
-      });
 
-      this._socket.on("newChild", (data) => {
-        console.log("New child vex event received:", data);
-        if (data.parentId === this._parentVex) {
-          console.log("New child vex received:", data);
-          this.addVex(data.child);
-        }
-      });
+    // Get JWT token from cookie
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) {
+        return parts.pop().split(';').shift();
+      }
+    };
+
+    const token = getCookie('jwt');
+
+    // Connect to socket server with authentication
+    this._socket = io(window.location.hostname + ':3005', {
+      transports: ['websocket', 'polling'],
+      auth: {
+        token: token
+      },
+      withCredentials: true
+    });
+
+    // Handle connection errors
+    this._socket.on('connect_error', (error) => {
+      if (error.message.includes('Authentication error')) {
+        console.warn('Authentication failed. Please log in again.');
+      }
+    });
+
+    // Listen for new child events
+    this._socket.on('newChild', (data) => {
+      console.log('New child vex event received:', data);
+      if (data.parentId === this._parentVex) {
+        console.log('New child vex received:', data);
+        this.addVex(data.child);
+      }
+    });
+  }
+
+  joinRoom (vexId) {
+    console.log('joining vex room:', vexId);
+    this._socket.emit('joinVexRoom', vexId);
+  }
+
+  leaveRoom (vexId) {
+    console.log('leaving vex room:', vexId);
+    this._socket.emit('leaveVexRoom', vexId);
+  }
+
+  disconnectedCallback () {
+    if (this._socket && this._parentVex) {
+      this.leaveRoom(this._parentVex);
+      this._socket.off('newChild');
     }
   }
 
-  joinRoom(vexId) {
-    console.log("joining vex room:", vexId);
-    this._socket.emit("joinVexRoom", vexId);
-  }
-
-  leaveRoom(vexId) {
-    console.log("leaving vex room:", vexId);
-    this._socket.emit("leaveVexRoom", vexId);
-  }
-
-  disconnectedCallback() {
-    if (this._socket && this._hasSocketListener && this._parentVex) {
-      this._socket.emit("leaveVexRoom", this._parentVex);
-      this._socket.off("newChild");
-      this._hasSocketListener = false;
-    }
-  }
-
-  render() {
+  render () {
     this.shadowRoot.innerHTML = `
             <style>
                 :host {
@@ -147,45 +182,49 @@ class VexList extends HTMLElement {
             </div>
             <div class="vex-list"></div>
         `;
-    const listDiv = this.shadowRoot.querySelector(".vex-list");
+    const listDiv = this.shadowRoot.querySelector('.vex-list');
+    // add event listener for vex-list-unauthorized
+
     this._vexes.forEach((vex) => {
-      const vexDisplay = document.createElement("vex-display");
+      const vexDisplay = document.createElement('vex-display');
       vexDisplay.vex = vex; // Pass data via property only
-      vexDisplay.setAttribute("view-mode", this._viewMode);
+      vexDisplay.setAttribute('view-mode', this._viewMode);
       // Attach event listener directly to vex-display
-      vexDisplay.addEventListener("vex-main-click", this._onClick.bind(this));
+      vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
       listDiv.appendChild(vexDisplay);
     });
   }
 
-  connectedCallback() {
-    console.log("VexList connected");
-    if (this.hasAttribute("parent-vex")) {
+  connectedCallback () {
+    console.log('VexList connected');
+    if (this.hasAttribute('parent-vex')) {
       console.log(
-        "found Parent vex attribute:",
-        this.getAttribute("parent-vex")
+        'found Parent vex attribute:',
+        this.getAttribute('parent-vex')
       );
-      this.parentVex = this.getAttribute("parent-vex");
+      this.parentVex = this.getAttribute('parent-vex');
     }
-    if (this.hasAttribute("view-mode")) {
-      this.viewMode = this.getAttribute("view-mode");
+    if (this.hasAttribute('view-mode')) {
+      this.viewMode = this.getAttribute('view-mode');
     }
     this.fetchVexes();
     this.setupSocket();
     this.render();
   }
 
-  addVex(vex) {
-    if (!vex || typeof vex !== "object") return;
+  addVex (vex) {
+    if (!vex || typeof vex !== 'object') {
+      return;
+    }
     this._vexes.push(vex);
-    const listDiv = this.shadowRoot.querySelector(".vex-list");
-    const vexDisplay = document.createElement("vex-display");
+    const listDiv = this.shadowRoot.querySelector('.vex-list');
+    const vexDisplay = document.createElement('vex-display');
     vexDisplay.vex = vex; // Pass data via property only
-    vexDisplay.setAttribute("view-mode", this._viewMode);
+    vexDisplay.setAttribute('view-mode', this._viewMode);
     // Attach event listener directly to vex-display
-    vexDisplay.addEventListener("vex-main-click", this._onClick.bind(this));
+    vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
     listDiv.prepend(vexDisplay);
   }
 }
 
-customElements.define("vex-list", VexList);
+customElements.define('vex-list', VexList);

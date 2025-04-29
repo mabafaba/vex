@@ -1,7 +1,7 @@
 class VexInputComponent extends HTMLElement {
-  constructor() {
+  constructor () {
     super();
-    this.attachShadow({ mode: "open" });
+    this.attachShadow({ mode: 'open' });
 
     this.shadowRoot.innerHTML = `
             <style>
@@ -52,62 +52,62 @@ class VexInputComponent extends HTMLElement {
         `;
 
     this.shadowRoot
-      .querySelector("#sendButton")
-      .addEventListener("click", () => this.sendVex());
+      .querySelector('#sendButton')
+      .addEventListener('click', () => this.sendVex());
     // Add event listener for Enter key
     this.shadowRoot
-      .querySelector("#vexContent")
-      .addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
+      .querySelector('#vexContent')
+      .addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
           this.sendVex();
         }
       });
   }
 
-  connectedCallback() {
+  connectedCallback () {
     // get parent-vex from attribute, or if not set, set to empty array
-    this.parents = [this.getAttribute("parent-vex")] || [];
+    this.parents = [this.getAttribute('parent-vex')] || [];
   }
 
   // listen for changes in the parent-vex attribute
-  static get observedAttributes() {
-    return ["parent-vex"];
+  static get observedAttributes () {
+    return ['parent-vex'];
   }
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === "parent-vex") {
+  attributeChangedCallback (name, oldValue, newValue) {
+    if (name === 'parent-vex') {
       this.parents = [newValue] || [];
     }
   }
 
-  async sendVex() {
-    const content = this.shadowRoot.querySelector("#vexContent").value.trim();
+  async sendVex () {
+    const content = this.shadowRoot.querySelector('#vexContent').value.trim();
     if (!content) {
-      alert("Content cannot be empty!");
+      alert('Content cannot be empty!');
       return;
     }
 
     try {
-      const response = await fetch("/vex/vertex", {
-        method: "POST",
+      const response = await fetch('/vex/vertex', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ content, parents: this.parents }),
+        body: JSON.stringify({ content, parents: this.parents })
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to send vex");
+        throw new Error(error.error || 'Failed to send vex');
       }
 
       console.log(response);
 
       const result = await response.json();
-      this.shadowRoot.querySelector("#vexContent").value = "";
+      this.shadowRoot.querySelector('#vexContent').value = '';
     } catch (error) {
       alert(`Error: ${error.message}`);
     }
   }
 }
 
-customElements.define("vex-input", VexInputComponent);
+customElements.define('vex-input', VexInputComponent);

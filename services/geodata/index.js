@@ -22,20 +22,17 @@ router.use(express.urlencoded({ extended: true }));
 
 // get all
 router.get('/', async (req, res) => {
-    GeoJsonFeature.find({})
-        .then((features) => {
-            res.status(200).send(features);
-        })
-        .catch((err) => {
-            res.status(500).send(err);
-        });
-
+  GeoJsonFeature.find({})
+    .then((features) => {
+      res.status(200).send(features);
+    })
+    .catch((err) => {
+      res.status(500).send(err);
+    });
 });
 
-
-
 module.exports = {
-    router: router,
-    importGeoJson: importGeoJson,
-    GeoJsonFeature: GeoJsonFeature
-}
+  router: router,
+  importGeoJson: importGeoJson,
+  GeoJsonFeature: GeoJsonFeature
+};

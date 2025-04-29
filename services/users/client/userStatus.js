@@ -1,5 +1,5 @@
 class UserStatus extends HTMLElement {
-  constructor() {
+  constructor () {
     super();
     this.attachShadow({ mode: 'open' });
     this.user = null;
@@ -9,54 +9,75 @@ class UserStatus extends HTMLElement {
     const translator = (translations) => {
       return (key) => {
         const lang = document.documentElement.lang || 'en';
-        
-        if(!translations[lang] || !translations[lang][key]) {
-          console.warn(`No translation found for key: ${key} in language: ${lang}`);
+
+        if (!translations[lang] || !translations[lang][key]) {
+          console.warn(
+            `No translation found for key: ${key} in language: ${lang}`
+          );
           return key;
         }
         return translations[lang][key];
-      }
-    }
+      };
+    };
 
     this.t = translator({
-      en: { login: "Login", logout: "Logout", welcome: "Welcome" },
-      es: { login: "Iniciar sesión", logout: "Cerrar sesión", welcome: "Bienvenido" },
-      fr: { login: "Connexion", logout: "Déconnexion", welcome: "Bienvenue" },
-      de: { login: "Anmeldung", logout: "Abmelden", welcome: "Willkommen" },
-      pt: { login: "Entrar", logout: "Sair", welcome: "Bem-vindo" },
+      en: { login: 'Login', logout: 'Logout', welcome: 'Welcome' },
+      es: {
+        login: 'Iniciar sesión',
+        logout: 'Cerrar sesión',
+        welcome: 'Bienvenido'
+      },
+      fr: { login: 'Connexion', logout: 'Déconnexion', welcome: 'Bienvenue' },
+      de: { login: 'Anmeldung', logout: 'Abmelden', welcome: 'Willkommen' },
+      pt: { login: 'Entrar', logout: 'Sair', welcome: 'Bem-vindo' }
     });
 
     // Observe language changes and re-render
     const observer = new MutationObserver(() => this.render());
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['lang']
+    });
   }
 
-  static get observedAttributes() {
-    return ['me-endpoint', 'logout-endpoint', 'login-target', 'login-endpoint', 'register-endpoint'];
+  static get observedAttributes () {
+    return [
+      'me-endpoint',
+      'logout-endpoint',
+      'login-target',
+      'login-endpoint',
+      'register-endpoint'
+    ];
   }
 
-  attributeChangedCallback(name, oldValue, newValue) {
+  attributeChangedCallback (name, oldValue, newValue) {
     if (oldValue !== newValue) {
       this.render();
     }
   }
 
-  async connectedCallback() {
+  async connectedCallback () {
     await this.fetchUserData();
     this.render();
     this.addEventListeners();
   }
 
-  async fetchUserData() {
+  async fetchUserData () {
+    console.log('fetchUserData called');
     try {
       const meEndpoint = this.getAttribute('me-endpoint') || '/user/me';
       const response = await fetch(meEndpoint, {
         method: 'GET',
         credentials: 'include' // Include cookies for JWT authentication
       });
-      console.log("fetchUserData: response", response);
+
       if (response.status === 200) {
         this.user = await response.json();
+        // set global state.user variable
+        // check if 'state' object exists in document global scope
+
+        state.userid = this.user.id;
+        state.username = this.user.name;
         this.isLoggedIn = true;
       } else {
         this.user = null;
@@ -67,11 +88,11 @@ class UserStatus extends HTMLElement {
       this.user = null;
       this.isLoggedIn = false;
     }
-    
+
     this.render();
   }
 
-  async handleLogout() {
+  async handleLogout () {
     try {
       const logoutEndpoint = this.getAttribute('logout-endpoint') || '/logout';
       // Make a fetch request instead of redirecting
@@ -79,6 +100,18 @@ class UserStatus extends HTMLElement {
         method: 'GET',
         credentials: 'include' // Include cookies for JWT authentication
       });
+
+      // Clear the JWT token from cookies
+      document.cookie = 'jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+      // Disconnect all socket connections
+      document.querySelectorAll('vex-list').forEach((vexList) => {
+        if (vexList._socket) {
+          vexList._socket.disconnect();
+          vexList._socket = null;
+        }
+      });
+
       // Clear local state
       this.user = null;
       this.isLoggedIn = false;
@@ -89,28 +122,34 @@ class UserStatus extends HTMLElement {
     }
   }
 
-  showLoginForm() {
+  showLoginForm () {
     console.log('showing login form');
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
     authPopup.style.display = 'flex';
   }
 
-  hideLoginForm() {
+  hideLoginForm () {
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
     authPopup.style.display = 'none';
   }
 
-  addEventListeners() {
+  addEventListeners () {
     // Add event listeners for login/logout buttons
     if (this.isLoggedIn) {
-      this.shadowRoot.querySelector('#logout-button')?.addEventListener('click', () => this.handleLogout());
+      this.shadowRoot
+        .querySelector('#logout-button')
+        ?.addEventListener('click', () => this.handleLogout());
     } else {
-      this.shadowRoot.querySelector('#login-button')?.addEventListener('click', () => this.showLoginForm());
+      this.shadowRoot
+        .querySelector('#login-button')
+        ?.addEventListener('click', () => this.showLoginForm());
     }
-    
+
     // Add event listener for close button
-    this.shadowRoot.querySelector('.auth-popup-close')?.addEventListener('click', () => this.hideLoginForm());
-    
+    this.shadowRoot
+      .querySelector('.auth-popup-close')
+      ?.addEventListener('click', () => this.hideLoginForm());
+
     // Close popup when clicking outside
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
     authPopup?.addEventListener('click', (e) => {
@@ -128,11 +167,12 @@ class UserStatus extends HTMLElement {
     });
   }
 
-  render() {
-    const loginTarget = this.getAttribute('login-target') || window.location.href;
+  render () {
+    const loginTarget =
+      this.getAttribute('login-target') || window.location.href;
     const loginEndpoint = this.getAttribute('login-endpoint');
     const registerEndpoint = this.getAttribute('register-endpoint');
-    
+
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -193,11 +233,14 @@ class UserStatus extends HTMLElement {
       </style>
       
       <div class="user-status">
-        ${this.isLoggedIn ? 
-          `<span>${this.t('welcome')}, <span class="username">${this.user.name || this.user.username}</span></span>
-           <button id="logout-button">${this.t('logout')}</button>` :
-          `<button id="login-button">${this.t('login')}</button>`
-        }
+        ${
+  this.isLoggedIn
+    ? `<span>${this.t('welcome')}, <span class="username">${
+      this.user.name || this.user.username
+    }</span></span>
+           <button id="logout-button">${this.t('logout')}</button>`
+    : `<button id="login-button">${this.t('login')}</button>`
+}
       </div>
       
       <div class="auth-popup">
@@ -211,7 +254,7 @@ class UserStatus extends HTMLElement {
         </div>
       </div>
     `;
-    
+
     this.addEventListeners();
   }
 }
