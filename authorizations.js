@@ -139,7 +139,7 @@ const routes = [
   },
   {
     method: 'GET',
-    path: '/vex/vertex/[A-Za-z0-9]+/children',
+    path: '/vex/vertex/[A-Za-z0-9]+/children/.*',
     condition: isAuthenticated,
     notAuthorized: send403,
     notLoggedIn: send401
@@ -148,6 +148,14 @@ const routes = [
     method: 'GET',
     path: '/vex/vertex/[A-Za-z0-9]+/ancestry',
     condition: isAuthenticated,
+    notAuthorized: send403,
+    notLoggedIn: send401
+  },
+
+  {
+    method: 'GET',
+    path: '/vex/vertex/list/[A-Za-z0-9]+/subscribed',
+    condition: isAdminOrSelf,
     notAuthorized: send403,
     notLoggedIn: send401
   },

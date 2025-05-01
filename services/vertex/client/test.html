@@ -24,27 +24,74 @@
     <script src="./vexlist.js"></script>
     <script src="./vexreactions.js"></script>
     <script src="./vexthread.js"></script>
+    <script src="./ordinal-slider.js"></script>
+    <script src="./vexsortcontrols.js"></script>
     <script src="/vex/user/static/authForm.js"></script>
     <script src="/vex/user/static/userstatus.js"></script>
     <script src="/vex/utils/reactiveglobalstate.js"></script>
     <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
       body {
         font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 30px;
         background: #defcfe;
+        box-sizing: border-box;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        max-width: 1000px;
+        margin: auto;
+      }
+
+      .main-container {
+        display: flex;
+        gap: 10px;
+        flex: 1;
+        min-height: 0; /* Important for flex child scrolling */
+      }
+
+      .square-list-container {
+        width: 70px;
+        flex-shrink: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        /* shadow to the right */
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        padding-right:5px;
+      }
+
+      .thread-container {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .user-status-container {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-bottom: 10px;
+        transform: scale(0.8);
+        transform-origin: top right;
       }
 
       vex-display {
         background: rgb(224, 172, 247);
       }
+
       .auth-buttons {
         position: fixed;
         top: 10px;
         right: 10px;
         padding: 10px;
       }
+
       .auth-buttons a {
         display: inline-block;
         padding: 8px 15px;
@@ -54,8 +101,36 @@
         border-radius: 4px;
         margin-left: 10px;
       }
+
       .auth-buttons a:hover {
         background-color: #3367d6;
+      }
+
+      /* Custom scrollbar styling */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+      }
+
+      /* Hide scrollbars for all elements */
+      * {
+        -ms-overflow-style: none;  /* Internet Explorer 10+ */
+        scrollbar-width: none;  /* Firefox */
+      }
+      *::-webkit-scrollbar { 
+        display: none;  /* Safari and Chrome */
       }
     </style>
   </head>
@@ -63,14 +138,24 @@
     <!-- <div class="auth-buttons">
       <a href="/login">Login</a>
     </div> -->
-    <user-status
-      me-endpoint="/vex/user/me"
-      logout-endpoint="/vex/user/logout"
-      login-endpoint="/vex/user/login"
-      register-endpoint="/vex/user/register"
-    >
-    </user-status>
-    <vex-thread id="main-vex-thread"></vex-thread>
+    <div class="user-status-container">
+      <user-status
+        me-endpoint="/vex/user/me"
+        logout-endpoint="/vex/user/logout"
+        login-endpoint="/vex/user/login"
+        register-endpoint="/vex/user/register"
+      >
+      </user-status>
+    </div>
+
+    <div class="main-container">
+      <div class="square-list-container">
+        <vex-list id="square-list" view-mode="activesquare"></vex-list>
+      </div>
+      <div class="thread-container">
+        <vex-thread id="main-vex-thread"></vex-thread>
+      </div>
+    </div>
 
     <!-- <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">
         Socket.io: <span id="socket-status">Checking...</span>
@@ -83,10 +168,24 @@
         console.error("No vex id provided in the URL");
         vexId = "67e9be5a916e679e97067e6c";
       }
-      // Set vex-id on the new component
+      
+      // Set vex-id on the thread component
       const thread = document.getElementById("main-vex-thread");
       thread.setAttribute("vex-id", vexId);
-      // Optionally, listen for navigation events if you want to react to thread changes
+
+      // Set parent-vex on the square list
+      const squareList = document.getElementById("square-list");
+      squareList.setAttribute("parent-vex", vexId);
+      squareList.onClick = function(vex){
+        // set all other items in list to inactive
+        squareList.shadowRoot.querySelectorAll('vex-display').forEach(el => {console.log("EL", el);el.setAttribute('view-mode','square');console.log("EL after", el);});
+        // find vex-display with vex.detail.vexId
+        console.log('vex.detail',vex.detail)
+        const clickedVex = squareList.shadowRoot.querySelector(`vex-display[vex-id="${vex.detail.vexId}"]`);
+        clickedVex.setAttribute('view-mode','activesquare');
+        console.log(vex.detail.vexId)
+        thread.setAttribute('vex-id',vex.detail.vexId);
+      }
     </script>
   </body>
 </html>

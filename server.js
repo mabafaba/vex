@@ -6,7 +6,6 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 
 // services
-const vertexService = require('./services/vertex');
 const connectDB = require('./services/database');
 
 connectDB('vex')
@@ -20,6 +19,9 @@ connectDB('vex')
 const port = 3005;
 const app = express();
 const server = require('http').createServer(app);
+
+const vertexService = require('./services/vertex');
+const geodataService = require('./services/geodata');
 
 // Initialize socket.io with more permissive CORS to fix connection issues
 const io = socketIo(server, {

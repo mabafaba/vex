@@ -2,6 +2,8 @@ const express = require('express');
 const sanitizeHtml = require('sanitize-html');
 const path = require('path');
 const Vertex = require('./vertex.model');
+const VexList = require('./vexlist.model');
+const User = require('../users/js/users.model');
 const router = require('express').Router();
 // use json
 router.use(express.json());
@@ -50,10 +52,10 @@ router.post('/', async (req, res) => {
           for (const socketId of room) {
             const socket = io.sockets.sockets.get(socketId);
             if (socket && socket.user) {
-              // Only send to authenticated sockets
+              // Only send the new vex ID
               socket.emit('newChild', {
                 parentId: parent._id,
-                child: vertex
+                childId: vertex._id
               });
             }
           }
@@ -67,10 +69,40 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Route for a user to subscribe to a vex
+router.post('/:id/subscribe', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const vertexId = req.params.id;
+
+    // Find the vexlist named 'subscribed' for the current user
+    let vexlist = await VexList.findOne({ name: 'subscribed', user: userId });
+
+    // If the vexlist doesn't exist, create it
+    if (!vexlist) {
+      vexlist = new VexList({
+        name: 'subscribed',
+        user: userId,
+        vertices: []
+      });
+    }
+
+    // Add the vertex ID to the vexlist if not already present
+    if (!vexlist.vertices.includes(vertexId)) {
+      vexlist.vertices.push(vertexId);
+      await vexlist.save();
+    }
+
+    res.status(200).json({ message: 'Subscribed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all vertices
 router.get('/', async (req, res) => {
   try {
-    const vertices = await Vertex.find();
+    const vertices = await Vertex.find().populate('createdBy', 'username');
     res.status(200).json(vertices);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -80,7 +112,7 @@ router.get('/', async (req, res) => {
 // Get a single vertex by ID
 router.get('/:id', async (req, res) => {
   try {
-    const vertex = await Vertex.findById(req.params.id);
+    const vertex = await Vertex.findById(req.params.id).populate('createdBy', 'username');
     if (!vertex) {
       return res.status(404).json({ error: 'Vertex not found' });
     }
@@ -91,17 +123,36 @@ router.get('/:id', async (req, res) => {
 });
 
 // Get all children of a vertex by ID
-router.get('/:id/children', async (req, res) => {
+router.get('/:id/children/:sorting', async (req, res) => {
   try {
     const vertex = await Vertex.findById(req.params.id);
     if (!vertex) {
       return res.status(404).json({ error: 'Vertex not found' });
     }
 
-    // Fetch all children in a single query
-    const children = await Vertex.find({ _id: { $in: vertex.children } });
-    // sort children by createdAt
-    children.sort((a, b) => b.createdAt - a.createdAt);
+    // Fetch all children in a single query with populated createdBy
+    const children = await Vertex.find({ _id: { $in: vertex.children } }).populate('createdBy', 'username');
+
+    // Sort based on path parameter
+    const sortBy = req.params.sorting;
+    if (sortBy === 'upvotes') {
+      children.sort((a, b) => {
+        const aUpvotes = (a.userReactions?.upvote || []).length;
+        const bUpvotes = (b.userReactions?.upvote || []).length;
+        return bUpvotes - aUpvotes;
+      });
+    } else if (sortBy === 'hot') {
+      children.sort((a, b) => {
+        const aUpvotes = (a.userReactions?.upvote || []).length;
+        const bUpvotes = (b.userReactions?.upvote || []).length;
+        const aScore = Math.log10(aUpvotes + 1) * 287015 + a.createdAt.getTime() / 1000;
+        const bScore = Math.log10(bUpvotes + 1) * 287015 + b.createdAt.getTime() / 1000;
+        return bScore - aScore;
+      });
+    } else {
+      // Default sort by date (newest first)
+      children.sort((a, b) => b.createdAt - a.createdAt);
+    }
 
     res.status(200).json(children);
   } catch (error) {
@@ -117,8 +168,8 @@ router.get('/:id/parents', async (req, res) => {
       return res.status(404).json({ error: 'Vertex not found' });
     }
 
-    // Fetch all parents in a single query
-    const parents = await Vertex.find({ _id: { $in: vertex.parents } });
+    // Fetch all parents in a single query with populated createdBy
+    const parents = await Vertex.find({ _id: { $in: vertex.parents } }).populate('createdBy', 'username');
     res.status(200).json(parents);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -137,9 +188,12 @@ router.get('/:id/ancestry', async (req, res) => {
     let currentVertex = vertex;
 
     while (currentVertex) {
+      // Populate the current vertex with creator info
+      const populatedVertex = await Vertex.findById(currentVertex._id).populate('createdBy', 'username');
       ancestry.unshift({
-        id: currentVertex._id,
-        content: currentVertex.content
+        id: populatedVertex._id,
+        content: populatedVertex.content,
+        createdBy: populatedVertex.createdBy
       });
       currentVertex = await Vertex.findById(currentVertex.parents[0]); // Get the first parent
     }
@@ -175,6 +229,33 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Get all vexes in the vexlist named 'subscribed' for the current user
+router.get('/list/:user/subscribed', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Find the vexlist named 'subscribed' for the current user
+    let vexlist = await VexList.findOne({ name: 'subscribed', user: userId });
+
+    // If the vexlist doesn't exist, create it and return an empty array
+    if (!vexlist) {
+      vexlist = new VexList({
+        name: 'subscribed',
+        user: userId,
+        vertices: []
+      });
+      await vexlist.save();
+      return res.status(200).json([]);
+    }
+
+    // Fetch all vexes in the vexlist
+    const vexes = await Vertex.find({ _id: { $in: vexlist.vertices } }).populate('createdBy', 'username');
+    res.status(200).json(vexes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // route to add a reaction to a vertex
 router.post('/:id/react', async (req, res) => {
   console.log('post vex reaction', req.body);
@@ -189,7 +270,7 @@ router.post('/:id/react', async (req, res) => {
     const { type, on } = req.body;
     console.log('type', type);
     console.log('on', on);
-    if (!['flagged', 'upvote', 'downvote', 'offtopic'].includes(type)) {
+    if (!['flagged', 'upvote', 'downvote', 'offtopic', 'join'].includes(type)) {
       console.log('invalid reaction type', type);
       return res.status(400).json({ error: 'Invalid reaction type' });
     }
@@ -215,15 +296,38 @@ router.post('/:id/react', async (req, res) => {
         reactionArray.splice(index, 1);
       }
     }
-    console.log('reactionArray', reactionArray);
 
     vertex.userReactions[type] = reactionArray;
 
     console.log('vertex.userReactions', vertex.userReactions);
 
     await vertex.save();
-    console.log('vertex saved', vertex);
-    console.log('sending 200 for', type, on);
+    // let everyone who is subscribed to this one's parent vex know that the reaction has changed
+    const io = req.app.get('io');
+    if (io) {
+      console.log(
+        `Emitting reactionChange event to parent to room: vex-${vertex.parents[0]}`
+      );
+      // Get all sockets in the room
+      const room = io.sockets.adapter.rooms.get(`vex-${vertex.parents[0]}`);
+      console.log('room is', room);
+      if (room) {
+        console.log('found room', room);
+        // For each socket in the room, verify it's authenticated before sending
+        for (const socketId of room) {
+          console.log('getting socket', socketId);
+          const socket = io.sockets.sockets.get(socketId);
+          if (socket && socket.user) {
+            // Only send the new vex ID
+            socket.emit('reactionChange', {
+              vertexId: vertex._id,
+              type,
+              on
+            });
+          }
+        }
+      }
+    }
     res.status(200).json(vertex);
   } catch (error) {
     res.status(400).json({ error: error.message });

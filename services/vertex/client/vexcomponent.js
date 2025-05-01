@@ -1,11 +1,10 @@
-
 class VexComponent extends HTMLElement {
   constructor () {
     super();
     this.attachShadow({ mode: 'open' });
     this.state = {
       vex: null,
-      viewMode: 'normal' // 'collapsed', 'normal', 'thread'
+      viewMode: 'normal' // 'collapsed', 'normal', 'thread', 'square', 'activesquare'
     };
   }
 
@@ -52,43 +51,113 @@ class VexComponent extends HTMLElement {
                 }
                 .vex {
                     border-bottom: 1px dotted #CCC;
-                   
                     margin: 10px 0;
-                    /* margin-top:10px; */
                     border: none;
-                    -webkit-border-radius: 11px;
                     border-radius: 11px;
-                    /* Remove background from .vex, move to .vex-main */
                     background: none;
                     box-sizing: border-box;
+                    transition: all 0.3s ease-in-out;
                 }
                 .vex-main {
                     background: rgb(224, 222, 253);
                     border-radius: 11px;
                     padding: 10px;
                     cursor: pointer;
+                    transition: all 0.3s ease-in-out;
                 }
                 .vex.thread .vex-main {
                     background-color: #4B0082;
                     color: white;
                     border: 2px solid rgb(125, 5, 133);
                 }
-
-                .vex.thread #vex-actions button {
-                    background-color: #7d0585;
+                .vex.square .vex-main {
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 11px;
+                    padding: 3px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    overflow: hidden;
+                    box-sizing: border-box;
                 }
-
-                .vex.collapsed {
-                    cursor: pointer;
+                .vex.activesquare .vex-main {
+                    width: 100%;
+                    height: 100%;
+                    border-radius: 11px;
+                    padding: 2px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    overflow: hidden;
+                    background-color: #4B0082;
+                    color: white;
+                    border: 2px solid rgb(125, 5, 133);
+                    box-sizing: border-box;
+                }
+                .vex.square .user-name {
+                  display: none;
+                    font-size: 0.7em;
+                    margin-bottom: 2px;
+                    white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    white-space: nowrap;
-                    font-size: 0.8em;
+                    width: 100%;
                 }
-                .vex.collapsed > .vex-main { font-size: 0.8em; }
-                .vex.collapsed > .vex-main > #vex-actions { display:none; }
-            
+                .vex.activesquare .user-name {
+                    display: none;
+                    font-size: 0.7em;
+                    margin-bottom: 2px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    width: 100%;
+                    color: #e0e0e0;
+                }
+                .vex.square #vex-content {
+                    font-size: 0.8em;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    line-height: 1.2;
+                    max-height: 3.6em;
+                    box-sizing: border-box;
+                    margin: 0px;
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    padding: 3px;
+                    box-sizing: border-box;
 
+                }
+                .vex.activesquare #vex-content {
+                    font-size: 0.8em;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 3;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    line-height: 1.2;
+                    max-height: 3.6em;
+                    margin: 0px;
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    padding: 10px;
+                    box-sizing: border-box;
+                }
+                .vex.square vex-reactions {
+                    display: none;
+                }
+                .vex.activesquare vex-reactions {
+                    display: none;
+                }
                 .vex.breadcrumb > * {
                     height: 0;
                     overflow: hidden;
@@ -98,9 +167,6 @@ class VexComponent extends HTMLElement {
                     opacity: 0;
                     transition: height 1s, opacity 1s;
                 }
-    
-
-
 
                 .vex.breadcrumb > .vex-main {
                     font-size: 0.6em;
@@ -119,8 +185,6 @@ class VexComponent extends HTMLElement {
                     white-space: nowrap;
                 }
 
-            
-
                 .vex.normal > reply-input-container {
                     height: 0;
                     overflow: hidden;
@@ -129,6 +193,18 @@ class VexComponent extends HTMLElement {
                     pointer-events: none;
                     opacity: 0;
                     transition: height 1s, opacity 1s;
+                }
+
+                
+                .vex.hidden {
+                    height: 0;
+                    width:0;
+                    overflow: hidden;
+                    padding: 0;
+                    margin: 0;
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: height 0.3s, opacity 0.3s ease-in;
                 }
 
                 #vex-content { margin-bottom: 10px; }
@@ -155,23 +231,106 @@ class VexComponent extends HTMLElement {
                 #reply-input-container {
                     margin-bottom: 5px;
                     margin-top: 5px;
-                    /* padding-bottom: 15px; */
-                    /* border-bottom: 1px solid #eee; */
                 }
                 .loading {
                     text-align: center;
                     font-style: italic;
                     color: #666;
                     margin: 10px 0;
+              }
+                .user-name {
+                    color: #666;
+                    font-size: 0.8em;
+                    margin-bottom: 5px;
+                }
+                .square {
+                    width: 70px;
+                    height: 30px;
+                    font-size: 0.5em;
+                    padding: 0px;
+                    margin: 0px;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .activesquare {
+                    width: 70px;
+                    height: 30px;
+                    font-size: 0.5em;
+                    padding: 0px;
+                    margin: 0px;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .square .content {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                }
+                .activesquare .content {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                }
+                .square .title {
+                    font-size: 11px;
+                    margin: 0;
+                    padding: 0 2px;
+                    max-width: 100%;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .activesquare .title {
+                    font-size: 11px;
+                    margin: 0;
+                    padding: 0 2px;
+                    max-width: 100%;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                .square .description {
+                    font-size: 9px;
+                    margin: 2px 0 0;
+                    padding: 0 2px;
+                    max-width: 100%;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                }
+                .activesquare .description {
+                    font-size: 9px;
+                    margin: 2px 0 0;
+                    padding: 0 2px;
+                    max-width: 100%;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
                 }
             </style>
             <div class="vex">
                 <div class="vex-main">
+                    ${vex.createdBy ? `<div class="user-name">${vex.createdBy.username}</div>` : ''}
                     <div id="vex-content">${vex.content}</div>
-                    <vex-reactions
+                    <!-- <vex-reactions-slider
                       vex-id="${vex._id}"
-                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions>
-                </div>
+                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reaction-slider>
+                </div> -->
+                 <vex-reactions
+                      vex-id="${vex._id}"
+                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions> 
             </div>
         `;
 
@@ -180,7 +339,7 @@ class VexComponent extends HTMLElement {
     // Set the correct class for view mode
     const vexDiv = this.shadowRoot.querySelector('.vex');
     if (vexDiv) {
-      vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
+      vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb', 'square', 'activesquare', 'hidden');
       vexDiv.classList.add(this.state.viewMode);
     }
   }
@@ -261,7 +420,7 @@ class VexComponent extends HTMLElement {
     if (!vexDiv) {
       return;
     }
-    vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb');
+    vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb', 'square', 'activesquare', 'hidden');
     vexDiv.classList.add(to);
   }
 }

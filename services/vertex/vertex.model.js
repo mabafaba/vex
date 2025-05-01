@@ -30,26 +30,26 @@ const vertexSchema = new mongoose.Schema({
   ],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'user',
     required: false
   },
   userReactions:
     {
       flagged: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
       }],
       offtopic: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
       }],
       upvote: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
       }],
       downvote: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
       }]
     },
   createdAt: {

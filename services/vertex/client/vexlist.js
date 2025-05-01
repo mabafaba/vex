@@ -10,6 +10,7 @@ class VexList extends HTMLElement {
     this._socket = null;
     this._onClick = () => {};
     this._connectionListener = null;
+    this._currentSort = 'date';
   }
 
   static get observedAttributes () {
@@ -22,6 +23,7 @@ class VexList extends HTMLElement {
       this.parentVex = newValue;
     }
     if (name === 'view-mode' && oldValue !== newValue) {
+      console.log('change list view mode to', newValue);
       this.viewMode = newValue;
     }
   }
@@ -75,6 +77,7 @@ class VexList extends HTMLElement {
   }
 
   set viewMode (mode) {
+    console.log('change list view mode to', mode);
     this._viewMode = mode;
     this.render();
   }
@@ -83,16 +86,14 @@ class VexList extends HTMLElement {
     return this._viewMode;
   }
 
-  async fetchVexes () {
+  async fetchVexes (sortBy = 'date') {
     if (!this._parentVex) {
       return;
     }
     try {
-      const response = await fetch(`/vex/vertex/${this._parentVex}/children`);
-      console.log('fetchVexes response status:', response.status);
+      const response = await fetch(`/vex/vertex/${this._parentVex}/children/${sortBy}`);
       if (!response.ok) {
         if (response.status === 401) {
-          console.log('dispatching vex-list-unauthorized event');
           this.dispatchEvent(new CustomEvent('vex-list-unauthorized'));
         }
         throw new Error('Failed to fetch children');
@@ -115,7 +116,7 @@ class VexList extends HTMLElement {
     // Get JWT token from cookie
     const getCookie = (name) => {
       const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
+      const parts = value.split( ';' + name + '=' );
       if (parts.length === 2) {
         return parts.pop().split(';').shift();
       }
@@ -140,11 +141,59 @@ class VexList extends HTMLElement {
     });
 
     // Listen for new child events
-    this._socket.on('newChild', (data) => {
+    this._socket.on('newChild', async (data) => {
       console.log('New child vex event received:', data);
       if (data.parentId === this._parentVex) {
         console.log('New child vex received:', data);
-        this.addVex(data.child);
+        // Fetch the new vex data
+        try {
+          const response = await fetch(`/vex/vertex/${data.childId}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch new vex');
+          }
+          const newVex = await response.json();
+          this.addVex(newVex);
+        } catch (error) {
+          console.error('Error fetching new vex:', error);
+        }
+      }
+    });
+
+    // Listen for reactionChange events
+    this._socket.on('reactionChange', (data) => {
+      console.log('Reaction change event received:', data);
+      // data: { vertexId, type, on }
+      const { vertexId, type, on } = data;
+      // Find the vex in the local array
+      const vex = this._vexes.find(v => v._id === vertexId);
+      if (vex) {
+        if (!vex.userReactions) {
+          vex.userReactions = {};
+        }
+        if (!vex.userReactions[type]) {
+          vex.userReactions[type] = [];
+        }
+        if (on) {
+          // Add userId if not present
+          if (!vex.userReactions[type].includes(state.userid)) {
+            vex.userReactions[type].push(state.userid);
+          }
+        } else {
+          // Remove userId if present
+          vex.userReactions[type] = vex.userReactions[type].filter(id => id !== state.userid);
+        }
+        // Update the vex-reactions component for this vex
+        const vexDisplay = this.shadowRoot.querySelector(`vex-display[vex-id='${vertexId}']`);
+        console.log('vexDisplay', vexDisplay);
+        if (vexDisplay) {
+          const vexReactions = vexDisplay.shadowRoot && vexDisplay.shadowRoot.querySelector('vex-reactions');
+          console.log('vexReactions', vexReactions);
+          if (vexReactions) {
+            // Update the attribute to trigger re-render
+            vexReactions.setAttribute('vex-reactions', JSON.stringify(vex.userReactions));
+            vexReactions.connectedCallback();
+          }
+        }
       }
     });
   }
@@ -168,30 +217,35 @@ class VexList extends HTMLElement {
 
   render () {
     this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: block;
-                }
-                .vex-list {
-                    /* display: flex;
-                    flex-direction: column;
-                    gap: 8px; */
-                }
-            </style>
-            <div class="parent-vex">
-            </div>
-            <div class="vex-list"></div>
-        `;
-    const listDiv = this.shadowRoot.querySelector('.vex-list');
-    // add event listener for vex-list-unauthorized
+      <style>
+        :host {
+          display: block;
+        }
+        .vex-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+      </style>
+      <div class="vex-list"></div>
+      <vex-sort-controls current-sort="${this._currentSort}"></vex-sort-controls>
+    `;
 
+    const listDiv = this.shadowRoot.querySelector('.vex-list');
     this._vexes.forEach((vex) => {
       const vexDisplay = document.createElement('vex-display');
-      vexDisplay.vex = vex; // Pass data via property only
+      vexDisplay.vex = vex;
       vexDisplay.setAttribute('view-mode', this._viewMode);
-      // Attach event listener directly to vex-display
+      vexDisplay.setAttribute('vex-id', vex._id);
       vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
       listDiv.appendChild(vexDisplay);
+    });
+
+    // Listen for sort changes
+    const sortControls = this.shadowRoot.querySelector('vex-sort-controls');
+    sortControls.addEventListener('sort-changed', (e) => {
+      this._currentSort = e.detail.sort;
+      this.fetchVexes(this._currentSort);
     });
   }
 
@@ -221,6 +275,7 @@ class VexList extends HTMLElement {
     const vexDisplay = document.createElement('vex-display');
     vexDisplay.vex = vex; // Pass data via property only
     vexDisplay.setAttribute('view-mode', this._viewMode);
+    vexDisplay.setAttribute('vex-id', vex._id);
     // Attach event listener directly to vex-display
     vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
     listDiv.prepend(vexDisplay);
