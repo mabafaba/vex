@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const userService = require('./services/users');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 
 // services
 const connectDB = require('./services/database');
@@ -20,9 +21,6 @@ const port = 3005;
 const app = express();
 const server = require('http').createServer(app);
 
-const vertexService = require('./services/vertex');
-const geodataService = require('./services/geodata');
-
 // Initialize socket.io with more permissive CORS to fix connection issues
 const io = socketIo(server, {
   cors: {
@@ -31,13 +29,20 @@ const io = socketIo(server, {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
   },
+
   path: '/socket.io', // Make sure path matches client expectations
   transports: ['websocket', 'polling'] // Support multiple transport methods
 });
+
+const reactionsService = require('./services/reactions')(io);
+const vertexService = require('./services/vertex');
+const geodataService = require('./services/geodata');
+
 const { authorize, authenticate } = require('./authorizations');
 
 // WebSocket authentication middleware
 const authenticateSocket = async (socket, next) => {
+  next();
   try {
     // Get token from handshake
     const token =
@@ -69,13 +74,33 @@ const authenticateSocket = async (socket, next) => {
 };
 
 // Apply authentication middleware to all connections
-io.use(authenticateSocket);
+// io.use(authenticateSocket);
 
 app.use(cookieParser());
 app.use(express.json());
 
+// Livereload setup
+const livereload = require('livereload');
+const connectLivereload = require('connect-livereload');
+
+// Start livereload server on default port 35729
+const liveReloadServer = livereload.createServer();
+liveReloadServer.watch([
+  __dirname + '/services/utils',
+  __dirname + '/services/users/client',
+  __dirname + '/services/vertex/client'
+]);
+
+// Add connect-livereload middleware before static serving
+app.use(connectLivereload());
+
 // Serve static files from utils directory
 app.use('/vex/utils', express.static('services/utils'));
+
+// Serve livemodelelement directory as static for client-side imports
+app.use('/vex/services/livemodelelement', express.static(__dirname + '/services/livemodelelement'));
+
+app.use('/vex/reactions',  reactionsService.router);
 
 app.use('/vex/vertex', authenticate, authorize, vertexService.router);
 
@@ -143,4 +168,8 @@ app.set('io', io);
 server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
   console.log(`Socket.io server listening on port ${port}`);
+  if (liveReloadServer) {
+    // Only trigger livereload refresh after server is ready
+    liveReloadServer.refresh('/');
+  }
 });

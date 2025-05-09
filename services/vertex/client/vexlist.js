@@ -11,6 +11,22 @@ class VexList extends HTMLElement {
     this._onClick = () => {};
     this._connectionListener = null;
     this._currentSort = 'date';
+
+    this.handleNewChild = async (data) => {
+      if (data.parentId === this._parentVex) {
+        // Fetch the new vex data
+        try {
+          const response = await fetch(`/vex/vertex/${data.childId}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch new vex');
+          }
+          const newVex = await response.json();
+          this.addVex(newVex);
+        } catch (error) {
+          console.error('Error fetching new vex:', error);
+        }
+      }
+    };
   }
 
   static get observedAttributes () {
@@ -19,11 +35,9 @@ class VexList extends HTMLElement {
 
   attributeChangedCallback (name, oldValue, newValue) {
     if (name === 'parent-vex' && oldValue !== newValue) {
-      console.log('Parent vex changed:', newValue);
       this.parentVex = newValue;
     }
     if (name === 'view-mode' && oldValue !== newValue) {
-      console.log('change list view mode to', newValue);
       this.viewMode = newValue;
     }
   }
@@ -42,8 +56,6 @@ class VexList extends HTMLElement {
   }
 
   set parentVex (val) {
-    console.log('Setting parent vex:', val);
-    console.log('Current parent vex:', this._parentVex);
     if (this._parentVex === val) {
       return;
     }
@@ -52,11 +64,9 @@ class VexList extends HTMLElement {
       this.setupSocket();
     }
     if (this._parentVex) {
-      console.log('Leaving vex room:', this._parentVex);
       this.leaveRoom(this._parentVex);
     }
     if (val) {
-      console.log('joinRoom Joining vex room:', val);
       this.joinRoom(val);
     }
     this._parentVex = val;
@@ -77,7 +87,6 @@ class VexList extends HTMLElement {
   }
 
   set viewMode (mode) {
-    console.log('change list view mode to', mode);
     this._viewMode = mode;
     this.render();
   }
@@ -108,9 +117,12 @@ class VexList extends HTMLElement {
   }
 
   setupSocket () {
-    if (!window.io) {
-      console.error('Socket.io not available');
-      return;
+    if (!this.socket) {
+      if (!this.constructor.socket) {
+        console.error('VexList Element: No socket instance set on the class. Set VexList.socket (on the class itself, not the object) before using.');
+      } else {
+        this._socket = this.constructor.socket;
+      }
     }
 
     // Get JWT token from cookie
@@ -122,46 +134,11 @@ class VexList extends HTMLElement {
       }
     };
 
-    const token = getCookie('jwt');
-
-    // Connect to socket server with authentication
-    this._socket = io(window.location.hostname + ':3005', {
-      transports: ['websocket', 'polling'],
-      auth: {
-        token: token
-      },
-      withCredentials: true
-    });
-
-    // Handle connection errors
-    this._socket.on('connect_error', (error) => {
-      if (error.message.includes('Authentication error')) {
-        console.warn('Authentication failed. Please log in again.');
-      }
-    });
-
     // Listen for new child events
-    this._socket.on('newChild', async (data) => {
-      console.log('New child vex event received:', data);
-      if (data.parentId === this._parentVex) {
-        console.log('New child vex received:', data);
-        // Fetch the new vex data
-        try {
-          const response = await fetch(`/vex/vertex/${data.childId}`);
-          if (!response.ok) {
-            throw new Error('Failed to fetch new vex');
-          }
-          const newVex = await response.json();
-          this.addVex(newVex);
-        } catch (error) {
-          console.error('Error fetching new vex:', error);
-        }
-      }
-    });
+    this._socket.on('newChild', this.handleNewChild);
 
     // Listen for reactionChange events
     this._socket.on('reactionChange', (data) => {
-      console.log('Reaction change event received:', data);
       // data: { vertexId, type, on }
       const { vertexId, type, on } = data;
       // Find the vex in the local array
@@ -184,10 +161,10 @@ class VexList extends HTMLElement {
         }
         // Update the vex-reactions component for this vex
         const vexDisplay = this.shadowRoot.querySelector(`vex-display[vex-id='${vertexId}']`);
-        console.log('vexDisplay', vexDisplay);
+
         if (vexDisplay) {
           const vexReactions = vexDisplay.shadowRoot && vexDisplay.shadowRoot.querySelector('vex-reactions');
-          console.log('vexReactions', vexReactions);
+
           if (vexReactions) {
             // Update the attribute to trigger re-render
             vexReactions.setAttribute('vex-reactions', JSON.stringify(vex.userReactions));
@@ -199,19 +176,17 @@ class VexList extends HTMLElement {
   }
 
   joinRoom (vexId) {
-    console.log('joining vex room:', vexId);
     this._socket.emit('joinVexRoom', vexId);
   }
 
   leaveRoom (vexId) {
-    console.log('leaving vex room:', vexId);
     this._socket.emit('leaveVexRoom', vexId);
   }
 
   disconnectedCallback () {
     if (this._socket && this._parentVex) {
       this.leaveRoom(this._parentVex);
-      this._socket.off('newChild');
+      this._socket.off('newChild', this.handleNewChild);
     }
   }
 
@@ -250,12 +225,7 @@ class VexList extends HTMLElement {
   }
 
   connectedCallback () {
-    console.log('VexList connected');
     if (this.hasAttribute('parent-vex')) {
-      console.log(
-        'found Parent vex attribute:',
-        this.getAttribute('parent-vex')
-      );
       this.parentVex = this.getAttribute('parent-vex');
     }
     if (this.hasAttribute('view-mode')) {

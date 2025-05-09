@@ -1,3 +1,4 @@
+
 class VexComponent extends HTMLElement {
   constructor () {
     super();
@@ -10,9 +11,6 @@ class VexComponent extends HTMLElement {
 
   // Accept vex data only via property
   set vex (vexObj) {
-    console.log('vexObj', vexObj);
-    console.log('vexObj.userReactions', vexObj.userReactions);
-    console.log('stringified', JSON.stringify(vexObj.userReactions));
     this.state.vex = vexObj;
     this.render();
   }
@@ -324,18 +322,26 @@ class VexComponent extends HTMLElement {
                 <div class="vex-main">
                     ${vex.createdBy ? `<div class="user-name">${vex.createdBy.username}</div>` : ''}
                     <div id="vex-content">${vex.content}</div>
+                    <reaction-buttons user-id="${state && state.userid}"></reaction-buttons>
                     <!-- <vex-reactions-slider
                       vex-id="${vex._id}"
                       vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reaction-slider>
                 </div> -->
-                 <vex-reactions
+                 <!-- <vex-reactions
                       vex-id="${vex._id}"
-                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions> 
+                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions>  -->
             </div>
         `;
 
     this.addEventListeners();
     this.entranceAnimation();
+
+    const reactionButtons = this.shadowRoot.querySelector('reaction-buttons');
+    if (reactionButtons) {
+      console.log('vex:', vex);
+      reactionButtons.connect('Reaction', vex.reactions);
+    }
+
     // Set the correct class for view mode
     const vexDiv = this.shadowRoot.querySelector('.vex');
     if (vexDiv) {

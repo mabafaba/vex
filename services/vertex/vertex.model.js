@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const Reaction = mongoose.model('Reaction'); // Adjust the path as necessary
 const vertexSchema = new mongoose.Schema({
   content: {
     type: String,
@@ -33,25 +33,11 @@ const vertexSchema = new mongoose.Schema({
     ref: 'user',
     required: false
   },
-  userReactions:
-    {
-      flagged: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-      }],
-      offtopic: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-      }],
-      upvote: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-      }],
-      downvote: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-      }]
-    },
+  reactions: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Reaction',
+    required: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -64,9 +50,42 @@ const vertexSchema = new mongoose.Schema({
 
 vertexSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
+  // create a new reaction document if it doesn't exist
+  if (!this.reactions) {
+    console.log('Creating new reaction document');
+    const reaction = new Reaction();
+    //save
+    reaction.save()
+      .then((savedReaction) => {
+        this.reactions = savedReaction._id;
+        next();
+      })
+      .catch((err) => {
+        console.error('Error saving reaction document:', err);
+        next(err);
+      });
+  }
   next();
 });
 
 const Vertex = mongoose.model('Vertex', vertexSchema);
+
+// if no vertex is found, create an initial one now
+Vertex.findOne({}).then( async (vertex) => {
+  if (!vertex) {
+    const reactions = new Reaction();
+    await reactions.save();
+    const initialVertex = new Vertex({
+      content: 'hello world',
+      parents: [],
+      children: [],
+      subscribers: [],
+      createdBy: null,
+      reactions: reactions._id
+    });
+    await initialVertex.save();
+    console.log('Initial vertex created:', initialVertex);
+  }
+});
 
 module.exports = Vertex;

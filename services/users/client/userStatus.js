@@ -115,6 +115,9 @@ class UserStatus extends HTMLElement {
       // Clear local state
       this.user = null;
       this.isLoggedIn = false;
+
+      // dispatch logout event
+      this.dispatchEvent(new CustomEvent('user-logout', { bubbles: true, composed: true }));
       // Update the UI
       this.render();
     } catch (error) {
@@ -208,7 +211,6 @@ class UserStatus extends HTMLElement {
           left: 0;
           width: 100%;
           height: 100%;
-          background-color: rgba(0, 0, 0, 0.5);
           display: none;
           justify-content: center;
           align-items: center;
@@ -216,6 +218,9 @@ class UserStatus extends HTMLElement {
         }
         
         .auth-popup-content {
+          position:absolute;
+          top:0;
+          right:0;
           background-color: white;
           padding: 20px;
           border-radius: 5px;

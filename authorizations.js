@@ -201,7 +201,22 @@ const routes = [
     condition: isSubscriberOfVertex,
     notAuthorized: send403,
     notLoggedIn: send401
+  },
+  {
+    method: 'POST',
+    path: '/vex/reactions/.*',
+    condition: isAuthenticated,
+    notAuthorized: send403,
+    notLoggedIn: send401
+  },
+  {
+    method: 'GET',
+    path: '/vex/reactions/.*',
+    condition: isAuthenticated,
+    notAuthorized: send403,
+    notLoggedIn: send401
   }
+
 ];
 
 const authorize = createAuthorizer(routes);

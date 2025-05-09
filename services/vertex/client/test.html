@@ -6,7 +6,9 @@
     <title>Vex Component Test</title>
 
     <!-- Include Socket.io client library with direct URL to ensure proper loading -->
-    <script src="http://localhost:3005/socket.io/socket.io.js"></script>
+    <!-- <script src="http://localhost:3005/socket.io/socket.io.js"></script> -->
+     <!-- instead, load from web 4.8.1-->
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
     <script>
       // Add debugging for Socket.io connection
       window.addEventListener("DOMContentLoaded", () => {
@@ -15,7 +17,11 @@
           typeof io !== "undefined"
         );
       });
-    </script>
+      </script>
+    
+    <script src="/vex/utils/reactive.js"></script>
+    <script src="/vex/utils/reactivestateelement.js"></script>
+    <script src="/vex/utils/livemodelelement/livemodelelement.js"></script>
     
     <script src="./vexcomponent.js"></script>
     <script src="./vexinputcomponent.js"></script>
@@ -26,9 +32,10 @@
     <script src="./vexthread.js"></script>
     <script src="./ordinal-slider.js"></script>
     <script src="./vexsortcontrols.js"></script>
+    <script src="/vex/reactions/static/reactionbuttons.js"></script>
     <script src="/vex/user/static/authForm.js"></script>
     <script src="/vex/user/static/userstatus.js"></script>
-    <script src="/vex/utils/reactiveglobalstate.js"></script>
+    <script src="http://localhost:35729/livereload.js?snipver=1"></script>
     <style>
       html, body {
         height: 100%;
@@ -77,8 +84,17 @@
         justify-content: flex-end;
         align-items: center;
         margin-bottom: 10px;
-        transform: scale(0.8);
+        transform: scale(1);
         transform-origin: top right;
+      }
+
+      .auth-popup-content {
+        position: relative;
+        top: 0;
+        right: 0;
+        border: 1px solid #ccc;
+        padding: 10px;
+        z-index: 1000;
       }
 
       vex-display {
@@ -135,10 +151,12 @@
     </style>
   </head>
   <body>
+
     <!-- <div class="auth-buttons">
       <a href="/login">Login</a>
     </div> -->
     <div class="user-status-container">
+     
       <user-status
         me-endpoint="/vex/user/me"
         logout-endpoint="/vex/user/logout"
@@ -149,12 +167,7 @@
     </div>
 
     <div class="main-container">
-      <div class="square-list-container">
-        <vex-list id="square-list" view-mode="activesquare"></vex-list>
-      </div>
-      <div class="thread-container">
-        <vex-thread id="main-vex-thread"></vex-thread>
-      </div>
+
     </div>
 
     <!-- <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">
@@ -162,11 +175,36 @@
     </div> -->
 
     <script>
+      const socket = io("http://localhost:3005", {
+        transports: ["websocket"],
+        autoConnect: false,
+      })
+      socket.connect();
+      socket.on("connect", () => {
+        console.log("Socket connected");
+        // document.getElementById("socket-status").innerText = "Connected";
+      });
+      VexList.socket = socket;
+      LiveModelElement.socket = VexList.socket;
+      
+      const mainContainer = document.querySelector(".main-container");
+      mainContainer.innerHTML =`
+            <div class="square-list-container">
+        <vex-list id="square-list" view-mode="activesquare"></vex-list>
+      </div>
+      <div class="thread-container">
+        <vex-thread id="main-vex-thread"></vex-thread>
+      </div>`
+
+
+
+
+
       const urlParams = new URLSearchParams(window.location.search);
       let vexId = urlParams.get("id");
       if (!vexId) {
         console.error("No vex id provided in the URL");
-        vexId = "67e9be5a916e679e97067e6c";
+        vexId = "681e0e6520bfd6f055f01b24";
       }
       
       // Set vex-id on the thread component
@@ -186,6 +224,11 @@
         console.log(vex.detail.vexId)
         thread.setAttribute('vex-id',vex.detail.vexId);
       }
+
+
+      const state = reactive();
+
+
     </script>
   </body>
 </html>

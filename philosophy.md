@@ -1,3 +1,37 @@
+A) as vanilla as possible
+B) full stack feature-sliced architecture
+C) one way dependency hierarchy (never depend on larger or same level components)
+D) no sneaky coupling (shared state, events, API contracts, passing complex objects, ...)
+
+
+tl;dr: build self contained features that include both backend and frontend code, strongly decoupled from other features. This solves most problems you would usually need a framework for. Build vanilla without frameworks, which allows you to work outside the backend-frontend paradigm. End up with super simple, fast, code with super fast learning curve, no black boxes, and fewer dependency risks.
+
+
+1. build as vanilla as possible
+- most frameworks add complexity to solve problems we don't have
+- removes black boxes from codebase
+- allows collaborating with smallest common denominator of developer skills (we all know JS)
+
+2. tightly couple data models and UI
+- historically, we separate backend from frontend, and tightly couple each. 
+- however ui components are inherently coupled to the data they display
+- as a result, everything ends up connected to everything else
+- for rapid prototyping especially, tightly coupling data models with their UI components allows us to iterate super fast
+- example: we build a user database with ui components to log in / log out and view profile. Usually, the backend would be tightly coupled with the rest of the app, and the frontend as well. Instead, we pay the price of tightly coupling the user database with the UI, but keep everything related to the user separate from everything else. Now we can copy the user feature from one project to another very cheaply.
+
+3. tighly couple data and ui even more tightly
+- a generic model-component setup that keeps them in sync.
+- for example: user-model + user-ui-components in a single service.
+- they depend on each other *anyway*. Any small change in the model will require a change in the component, and often vice versa. Let's just make it explicit. And put them in the same folder. And make a real effort to keep them decoupled from everything else.
+
+4. we can think in this way only because we think vanilla. next.js / react / vue / angular / etc. are all stuck in the backend-frontend paradigm, building complicated black boxes to work around it's limitations, that at the same time bind us to the paradigm
+
+5. we can think vanilla, because we are not bound to the backend-frontend paradigm, and so we don't need these complicated frameworks to work around it's limitations.
+
+
+
+## llm instructions to adhere to philosophy
+
 1. **Minimize Complexity**
 
    - Keep functions small and focused

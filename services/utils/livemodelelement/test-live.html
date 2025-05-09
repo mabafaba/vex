@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LiveModelElement Test</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    socket = io({ path: '/socket.io' });
+  </script>
+  <script type="module">
+    import LiveModelElement from '/vex/services/livemodelelement/livemodelelement.js';
+    LiveModelElement.socket = socket;
+
+    class TestDocElement extends LiveModelElement {
+        connectedCallback() {
+          super.connectedCallback();
+          this.render();
+        }
+        disconnectedCallback() {
+          super.disconnectedCallback();
+        }
+      render() {
+        this.innerHTML = `
+          <div>Name: ${this.live?.name || ''}</div>
+          <div>Value: ${this.live?.value || ''}</div>
+          <button id="inc">Increment</button>
+        `;
+        this.querySelector('#inc').onclick = () => {
+          const newLive = {}
+          this.live.value = (this.live.value || 0) + 1;
+        };
+      }
+    }
+    customElements.define('test-doc-element', TestDocElement);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Replace with a real TestDoc _id from your database
+      const testDocId = '68188f35e01c067d6d597c8d';
+      
+      const el = document.createElement('test-doc-element');
+      el.setAttribute('model-name', 'TestDoc');
+      el.setAttribute('doc-id', testDocId);
+      el.connectedCallback();
+      document.body.appendChild(el);
+    });
+  </script>
+</head>
+<body>
+  
+</body>
+</html>

@@ -280,7 +280,7 @@ class LoginForm extends HTMLElement {
         const data = await res.json();
         if (res.status === 400 || res.status === 401) {
           this.dispatchEvent(
-            new CustomEvent('log-in-failed', {
+            new CustomEvent('login-failed', {
               bubbles: true,
               composed: true,
               detail: { error: data.message }
@@ -291,7 +291,7 @@ class LoginForm extends HTMLElement {
           }`);
         }
         this.dispatchEvent(
-          new CustomEvent('logged-in', {
+          new CustomEvent('login-success', {
             bubbles: true,
             composed: true,
             detail: { user: data }
@@ -299,7 +299,7 @@ class LoginForm extends HTMLElement {
         );
       } catch (err) {
         this.dispatchEvent(
-          new CustomEvent('log-in-failed', {
+          new CustomEvent('login-failed', {
             bubbles: true,
             composed: true,
             detail: { error: err.message }

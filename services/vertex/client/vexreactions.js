@@ -1,124 +1,28 @@
-class VexReactions extends HTMLElement {
-  constructor () {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this.reactions = {
-      upvote: [],
-      downvote: [],
-      flagged: [],
-      offtopic: [],
-      join: []
-    };
-  }
-
-  connectedCallback () {
-    this.vexId = this.getAttribute('vex-id');
-    const reactionsFromAttribute = JSON.parse(this.getAttribute('vex-reactions') || '{}');
-
-    this.reactions = {
-      upvote: reactionsFromAttribute.upvote || [],
-      downvote: reactionsFromAttribute.downvote || [],
-      flagged: reactionsFromAttribute.flagged || [],
-      offtopic: reactionsFromAttribute.offtopic || [],
-      join: reactionsFromAttribute.join || []
-    };
-
-    // unique the reactions
-    this.reactions.upvote = [...new Set(this.reactions.upvote)];
-    this.reactions.downvote = [...new Set(this.reactions.downvote)];
-    this.reactions.flagged = [...new Set(this.reactions.flagged)];
-    this.reactions.offtopic = [...new Set(this.reactions.offtopic)];
-    this.reactions.join = [...new Set(this.reactions.join)];
-
-    this.render();
-  }
-
+class VexReactionsUI extends ReactiveStateElement {
   render () {
-    // Only one reaction can be active at a time (besides join)
-    const userId = state.userid;
-    const rx = this.reactions;
-    const isJoined = rx.join.includes(userId);
-    // Determine which reaction is active (flagged, offtopic, downvote, upvote)
-    let activeType = null;
-    ['flagged', 'offtopic', 'downvote', 'upvote'].forEach(type => {
-      if (rx[type].includes(userId)) {
-        activeType = type;
-      }
-    });
-    this.shadowRoot.innerHTML = `
+    const { activeType = '', isJoined = false, upvoteCount = 0, downvoteCount = 0, flaggedCount = 0, offtopicCount = 0, joinCount = 0 } = this.state;
+    this.innerHTML = `
       <style>
-      .reactions {
-        display: flex;
-        width: 100%;
-        /* box-shadow: -2px -2px 3px rgba(0, 0, 0, 0.2); */
-        /* border-radius: 5px; */
-        overflow: hidden;
-      }
-      button {
-        flex: 1;
-        background-color: #0000;
-        color: white;
-        border: none;
-        padding: 5px 3px;
-        font-size: 9px;
-        cursor: pointer;
-        position: relative;
-        transition: all 0.2s ease;
-      }
-      button:not(:first-child) {
-        margin-left: -1px;
-      }
-      button:first-child {
-        border-top-left-radius: 5px;
-        border-bottom-left-radius: 5px;
-      }
-      button:last-child {
-        border-top-right-radius: 5px;
-        border-bottom-right-radius: 5px;
-      }
-      button:hover {
-        background-color: #0000;
-        color: #fff;
-        z-index: 1;
-      }
-      button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-      }
-      .join-button {
-      }
-      button.active {
-        
-      }
-      .upvote.active {
-        
-      }
-      .downvote.active {
-        
-      }
-      .flagged.active {
-        
-      }
-      .offtopic.active {
-        
-      }
+      .reactions { display: flex; width: 100%; overflow: hidden; }
+      button { flex: 1; background-color: #0000; color: white; border: none; padding: 5px 3px; font-size: 9px; cursor: pointer; position: relative; transition: all 0.2s ease; }
+      button:not(:first-child) { margin-left: -1px; }
+      button:first-child { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+      button:last-child { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+      button:hover { background-color: #0000; color: #fff; z-index: 1; }
+      button:disabled { background-color: #ccc; cursor: not-allowed; }
+      .join-button {}
+      button.active {}
+      .upvote.active {}
+      .downvote.active {}
+      .flagged.active {}
+      .offtopic.active {}
       </style>
       <div class="reactions">
-      <button id="flagged" class="${activeType === 'flagged' ? 'active' : ''}">
-        Flag (${(rx.flagged || []).length || 0})
-      </button>
-      <button id="offtopic" class="${activeType === 'offtopic' ? 'active' : ''}">
-        Off-Topic (${(rx.offtopic || []).length || 0})
-      </button>
-      <button id="downvote" class="${activeType === 'downvote' ? 'active' : ''}">
-        down (${(rx.downvote || []).length || 0})
-      </button>
-      <button id="upvote" class="${activeType === 'upvote' ? 'active' : ''}">
-        up (${(rx.upvote || []).length || 0})
-      </button>
-      <button id="join" class="join-button ${isJoined ? 'active' : ''}">
-        ${isJoined ? 'Leave' : 'Join'} (${(rx.join || []).length || 0})
-      </button>
+      <button id="flagged" class="${activeType === 'flagged' ? 'active' : ''}">Flag (${flaggedCount})</button>
+      <button id="offtopic" class="${activeType === 'offtopic' ? 'active' : ''}">Off-Topic (${offtopicCount})</button>
+      <button id="downvote" class="${activeType === 'downvote' ? 'active' : ''}">down (${downvoteCount})</button>
+      <button id="upvote" class="${activeType === 'upvote' ? 'active' : ''}">up (${upvoteCount})</button>
+      <button id="join" class="join-button ${isJoined ? 'active' : ''}">${isJoined ? 'Leave' : 'Join'} (${joinCount})</button>
       </div>
     `;
     this.addEventListeners();
@@ -126,59 +30,113 @@ class VexReactions extends HTMLElement {
 
   addEventListeners () {
     const buttons = ['upvote', 'downvote', 'flagged', 'offtopic', 'join'];
-
     buttons.forEach(buttonId => {
-      const button = this.shadowRoot.getElementById(buttonId);
-
+      const button = this.querySelector(`#${buttonId}`);
       if (button) {
-        button.addEventListener('click', e => {
+        button.onclick = e => {
           e.stopPropagation();
-          this.toggleReaction(buttonId);
-        });
+          this.dispatchEvent(new CustomEvent('reaction', { detail: { type: buttonId }, bubbles: true, composed: true }));
+        };
       }
     });
   }
+}
+customElements.define('vex-reactions-ui', VexReactionsUI);
 
-  async toggleReaction (type) {
-    // check if user has already reacted
-    const hasReacted = this.reactions[type].includes(state.userid);
-    console.log('state.userid', state.userid);
-    console.log('this.reactions[type]', this.reactions[type]);
-    console.log('hasReacted', hasReacted);
+class VexReactions extends HTMLElement {
+  constructor () {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._reactions = {
+      upvote: [],
+      downvote: [],
+      flagged: [],
+      offtopic: [],
+      join: []
+    };
+    this._userId = null;
+  }
 
+  connectedCallback () {
+    this.vexId = this.getAttribute('vex-id');
+    console.log('reactions', this.getAttribute('vex-reactions'));
+    const reactionsFromAttribute = JSON.parse(this.getAttribute('vex-reactions') || '{}');
+    this._reactions = {
+      upvote: reactionsFromAttribute.upvote || [],
+      downvote: reactionsFromAttribute.downvote || [],
+      flagged: reactionsFromAttribute.flagged || [],
+      offtopic: reactionsFromAttribute.offtopic || [],
+      join: reactionsFromAttribute.join || []
+    };
+    // unique the reactions
+    this._reactions.upvote = [...new Set(this._reactions.upvote)];
+    this._reactions.downvote = [...new Set(this._reactions.downvote)];
+    this._reactions.flagged = [...new Set(this._reactions.flagged)];
+    this._reactions.offtopic = [...new Set(this._reactions.offtopic)];
+    this._reactions.join = [...new Set(this._reactions.join)];
+    this._userId = window.state && window.state.userid;
+    this.render();
+  }
+
+  render () {
+    this.shadowRoot.innerHTML = '<vex-reactions-ui></vex-reactions-ui>';
+    const ui = this.shadowRoot.querySelector('vex-reactions-ui');
+    // Set all state as properties on the state object
+    ui.state.activeType = this._getActiveType() ?? '';
+    ui.state.isJoined = this._reactions.join.includes(this._userId);
+    ui.state.upvoteCount = this._reactions.upvote.length;
+    ui.state.downvoteCount = this._reactions.downvote.length;
+    ui.state.flaggedCount = this._reactions.flagged.length;
+    ui.state.offtopicCount = this._reactions.offtopic.length;
+    ui.state.joinCount = this._reactions.join.length;
+    ui.addEventListener('reaction', e => this.handleReaction(e.detail.type));
+  }
+
+  _getActiveType () {
+    if (!this._userId) {
+      return null;
+    }
+    if (this._reactions.upvote.includes(this._userId)) {
+      return 'upvote';
+    }
+    if (this._reactions.downvote.includes(this._userId)) {
+      return 'downvote';
+    }
+    if (this._reactions.flagged.includes(this._userId)) {
+      return 'flagged';
+    }
+    if (this._reactions.offtopic.includes(this._userId)) {
+      return 'offtopic';
+    }
+    return null;
+  }
+
+  async handleReaction (type) {
+    const userId = this._userId;
+    const hasReacted = (this._reactions[type] || []).includes(userId);
     if (hasReacted) {
-      // remove user id from reaction array
-      console.log('posting reaction', type, false);
       const response = await this.postReaction(type, false);
-      console.log('response', response);
       if (!response.ok) {
         console.error('Failed to remove reaction', response);
       }
-      this.reactions[type] = this.reactions[type].filter(id => id !== state.userid);
+      this._reactions[type] = (this._reactions[type] || []).filter(id => id !== userId);
     } else {
-      // add user id to reaction array
       const response = await this.postReaction(type, true);
-      console.log('response', response);
       if (!response.ok) {
         console.error('Failed to add reaction', response);
       }
-      this.reactions[type].push(state.userid);
+      this._reactions[type].push(userId);
     }
-
     this.render();
   }
 
   postReaction (type, on) {
-    console.log('postReaction', type, on);
-    console.log('postReaction', JSON.stringify({ type, on }));
     return fetch(`/vex/vertex/${this.vexId}/react`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, on })
     });
   }
 }
-
 customElements.define('vex-reactions', VexReactions);
+

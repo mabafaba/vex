@@ -16,7 +16,9 @@
   "devDependencies": {
     "@babel/core": "^7.26.10",
     "@babel/eslint-parser": "^7.27.0",
+    "connect-livereload": "^0.6.1",
     "eslint": "^8.57.1",
+    "livereload": "^0.9.3",
     "nodemon": "^3.1.9"
   },
   "dependencies": {

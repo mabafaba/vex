@@ -1,10 +1,14 @@
+const mongoose = require('mongoose');
 const express = require('express');
 const sanitizeHtml = require('sanitize-html');
 const path = require('path');
 const Vertex = require('./vertex.model');
 const VexList = require('./vexlist.model');
 const User = require('../users/js/users.model');
+const Reaction = mongoose.model('Reaction'); // Adjust the path as necessary
 const router = require('express').Router();
+
+// console log the pre hooks on reaction
 // use json
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
@@ -20,12 +24,17 @@ router.post('/', async (req, res) => {
     if (parents.length !== req.body.parents.length) {
       return res.status(400).json({ error: 'Some parent IDs are invalid' });
     }
-    console.log('creating vertex', req.user);
+    console.log('creating vertex', req.body);
+
+    const reactions = new Reaction();
+    await reactions.save();
+    console.log('reactions saved', reactions);
     const vertex = new Vertex({
       content: sanitizedContent,
       parents: req.body.parents || [],
       children: req.body.children || [],
       subscribers: req.body.subscribers || [],
+      reactions: reactions._id,
       createdBy: req.user.id
     });
 
@@ -94,6 +103,17 @@ router.post('/:id/subscribe', async (req, res) => {
     }
 
     res.status(200).json({ message: 'Subscribed successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+//delete all vertices
+router.get('/delete', async (req, res) => {
+  console.log('deleting all vertices');
+  try {
+    await Vertex.deleteMany({});
+    res.status(200).json({ message: 'All vertices deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
