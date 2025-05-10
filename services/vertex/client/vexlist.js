@@ -197,7 +197,7 @@ class VexList extends HTMLElement {
           display: block;
         }
         .vex-list {
-          display: flex;
+          /* display: flex; */
           flex-direction: column;
           gap: 8px;
         }

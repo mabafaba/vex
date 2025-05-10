@@ -48,17 +48,16 @@ class VexComponent extends HTMLElement {
                     transition: all 0.3s ease-in-out;
                 }
                 .vex {
-                    border-bottom: 1px dotted #CCC;
-                    margin: 10px 0;
-                    border: none;
-                    border-radius: 11px;
+                    border-bottom: 1px dotted #444;
+                    /* margin: 10px 0; */
+                    /* border-radius: 11px; */
                     background: none;
                     box-sizing: border-box;
                     transition: all 0.3s ease-in-out;
                 }
                 .vex-main {
-                    background: rgb(224, 222, 253);
-                    border-radius: 11px;
+                    /* background: rgb(224, 222, 253); */
+                    /* border-radius: 11px; */
                     padding: 10px;
                     cursor: pointer;
                     transition: all 0.3s ease-in-out;

@@ -13,7 +13,7 @@ class ReactiveAttributesElement extends HTMLElement {
             this.scheduleRender();
             break;
           }
-        }
+        }w;
       });
       this._mo.observe(this, { attributes: true });
     }
