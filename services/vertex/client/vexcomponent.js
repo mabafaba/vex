@@ -337,7 +337,8 @@ class VexComponent extends HTMLElement {
 
     const reactionButtons = this.shadowRoot.querySelector('reaction-buttons');
     if (reactionButtons) {
-      console.log('vex:', vex);
+      // console.log('vex:', vex);
+      console.log('reactionButtons:', vex.reactions);
       reactionButtons.connect('Reaction', vex.reactions);
     }
 
@@ -366,8 +367,8 @@ class VexComponent extends HTMLElement {
       // Emit custom event with vex id (no bubbling, no composition)
       this.dispatchEvent(new CustomEvent('vex-main-click', {
         detail: { vexId: this.state.vex?._id },
-        bubbles: false,
-        composed: false
+        bubbles: true,
+        composed: true
       }));
     });
   }
@@ -375,7 +376,7 @@ class VexComponent extends HTMLElement {
   async connectedCallback () {
     this.state.viewMode = this.getAttribute('view-mode') || 'normal';
     this.render();
-    this.entranceAnimation();
+    // this.entranceAnimation();
   }
 
   disconnectedCallback () {

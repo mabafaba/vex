@@ -1,72 +1,54 @@
-// LiveModelElement: Generic web component synced live to a database model
+// LiveModelElement: Generic web component synced live to a backend resource via HTTP and socket updates
 class LiveModelElement extends HTMLElement {
   constructor () {
     super();
-    this.handleUpdate = this.handleUpdate.bind(this);
-    this.live = null;
+    this.endpoint = null;
     this.socket = this.constructor.socket;
+    this.live = null;
+    this._updateHandler = this._updateHandler.bind(this);
   }
 
-  connect (modelName, id) {
-    console.log('attempting to connect', modelName, id);
-    if (!modelName || !id) {
-      console.error('LiveModelElement: connect() requires modelName and id');
-      return;
-    }
+  connect (endpoint) {
     this.disconnect();
-    console.log('LiveModelElement: connect', modelName, id);
-    this.modelName = modelName;
-    this.id = id;
-    if (!this.socket) {
-      console.error('LiveModelElement: No socket instance set on the class. Set LiveModelElement.socket (on the class itself, not the object) before using.');
+    this.endpoint = endpoint;
+    if (!this.endpoint) {
       return;
     }
-    if (!this.modelName || !this.id) {
-      return;
-    }
-    this.socket.on('disconnect', () => {});
-    this.socket.emit('live-model-element-subscribe', { modelName: this.modelName, id: this.id });
-    this.socket.on('live-model-element-update', this.handleUpdate);
-    this.socket.emit('live-model-element-get', { modelName: this.modelName, id: this.id }, doc => {
-      if (doc) {
-        this.live = this.createLiveState(doc);
+    // Fetch initial data
+    fetch(this.endpoint)
+      .then(res => res.json())
+      .then(doc => {
+        this.live = doc;
         if (typeof this.render === 'function') {
           this.render();
         }
-      }
-    });
+      });
+    // Subscribe to socket updates for this endpoint
+    if (this.socket) {
+      this.socket.emit('live-model-element-subscribe', { endpoint: this.endpoint });
+      this.socket.on(`live-model-element-update:${this.endpoint}`, this._updateHandler);
+    }
   }
 
   disconnect () {
-    if (this.socket && this.modelName && this.id) {
-      this.socket.emit('live-model-element-unsubscribe', { modelName: this.modelName, id: this.id });
-      this.socket.off('live-model-element-update', this.handleUpdate);
+    if (this.socket && this.endpoint) {
+      this.socket.emit('live-model-element-unsubscribe', { endpoint: this.endpoint });
+      this.socket.off(`live-model-element-update:${this.endpoint}`, this._updateHandler);
     }
   }
 
-  handleUpdate (doc) {
-    if (doc && doc._id === this.id) {
-      this.live = this.createLiveState(doc);
-      if (typeof this.render === 'function') {
-        this.render();
-      }
+  _updateHandler () {
+    // On update, re-fetch the data
+    if (this.endpoint) {
+      fetch(this.endpoint)
+        .then(res => res.json())
+        .then(doc => {
+          this.live = doc;
+          if (typeof this.render === 'function') {
+            this.render();
+          }
+        });
     }
-  }
-
-  createLiveState (doc) {
-    return new Proxy(doc, {
-      set: (target, key, value) => {
-        target[key] = value;
-        if (key !== '_id') {
-          const liveObject = JSON.parse(JSON.stringify(target));
-          this.socket.emit('live-model-element-patch', { modelName: this.modelName, _id: this.id, liveObject });
-        }
-        if (typeof this.render === 'function') {
-          this.render();
-        }
-        return true;
-      }
-    });
   }
 
   disconnectedCallback () {

@@ -98,6 +98,10 @@ class VexBreadcrumbs extends HTMLElement {
                     margin: 0 5px;
                     color: #9e9e9e;
                 }
+
+                .breadcrumbs-container {
+                  min-height: 27px;
+                }
             </style>
             
             <div class="breadcrumbs-container">

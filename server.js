@@ -74,7 +74,7 @@ const authenticateSocket = async (socket, next) => {
 };
 
 // Apply authentication middleware to all connections
-// io.use(authenticateSocket);
+io.use(authenticateSocket);
 
 app.use(cookieParser());
 app.use(express.json());
@@ -139,6 +139,7 @@ io.on('connection', (socket) => {
   // Join a room for a specific vex thread
   socket.on('joinVexRoom', (vexId) => {
     // Only allow authenticated users to join rooms
+
     if (!socket.user) {
       socket.emit('error', { message: 'Not authenticated' });
       return;

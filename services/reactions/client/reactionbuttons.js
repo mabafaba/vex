@@ -2,6 +2,38 @@ class reactionButtons extends LiveModelElement {
   constructor (id) {
     super('Reaction', id);
     this.attachShadow({ mode: 'open' });
+    this.reactions = [
+      { type: 'flagged' },
+      { type: 'offtopic' },
+      { type: 'downvote' },
+      { type: 'upvote' },
+      { type: 'join' }
+    ];
+
+    this.myReactions = {
+      flagged: false,
+      offtopic: false,
+      downvote: false,
+      upvote: false,
+      join: false
+    };
+
+    this.reactionTurnsOff = {
+      flagged: ['downvote', 'upvote', 'join'],
+      offtopic: [],
+      downvote: ['upvote'],
+      upvote: ['flagged', 'downvote', 'join'],
+      join: ['flagged']
+    };
+
+    // Use FontAwesome icon classes for each reaction type
+    this.faIcons = {
+      upvote: 'fa-thumbs-up',
+      downvote: 'fa-thumbs-down',
+      flagged: 'fa-flag',
+      offtopic: 'fa-random', // changed to random for off topic
+      join: 'fa-plus'
+    };
   }
 
   connectedCallback () {
@@ -25,25 +57,13 @@ class reactionButtons extends LiveModelElement {
 
   render () {
     console.log('rendering reaction buttons', this.live);
+
+    // console.log('rendering reaction buttons', this.live);
     if (!this.live) {
       return;
     }
     const userId = this.userId;
-    const reactions = [
-      { type: 'flagged' },
-      { type: 'offtopic' },
-      { type: 'downvote' },
-      { type: 'upvote' },
-      { type: 'join' }
-    ];
-    // Use FontAwesome icon classes for each reaction type
-    const faIcons = {
-      upvote: 'fa-thumbs-up',
-      downvote: 'fa-thumbs-down',
-      flagged: 'fa-flag',
-      offtopic: 'fa-random', // changed to random for off topic
-      join: 'fa-plus'
-    };
+
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
       <style>
@@ -57,7 +77,6 @@ class reactionButtons extends LiveModelElement {
         }
         button {
           flex: 1 1 0;
-          /* border: 1px solid #ccc; */
           border:none;
           border-right: none;
           background: rgba(245,245,245,0);
@@ -67,7 +86,7 @@ class reactionButtons extends LiveModelElement {
           font-size: 0.75em;
           line-height: 1.1;
           height: 1.6em;
-          transition: background 0.2s;
+          transition: background 0.2s, color 0.2s;
           border-radius: 0;
           min-width: 0;
           display: flex;
@@ -75,10 +94,25 @@ class reactionButtons extends LiveModelElement {
           justify-content: center;
           gap: 0.2em;
           cursor: pointer;
+          color: #888;
         }
         button[active] {
-          background: rgba(208,234,255,0.85);
           font-weight: bold;
+        }
+        button[data-type="flagged"][active] {
+          color: #a00;
+        }
+        button[data-type="offtopic"][active] {
+          color: #b47b00;
+        }
+        button[data-type="downvote"][active] {
+          color: #1e3a5c;
+        }
+        button[data-type="upvote"][active] {
+          color: #1a7f37;
+        }
+        button[data-type="join"][active] {
+          color: #0077b6;
         }
         button:first-child {
           border-top-left-radius: 999px;
@@ -87,7 +121,6 @@ class reactionButtons extends LiveModelElement {
         button:last-child {
           border-top-right-radius: 999px;
           border-bottom-right-radius: 999px;
-          /* border-right: 1px solid #ccc;   */
         }
         button:focus {
           z-index: 1;
@@ -103,11 +136,11 @@ class reactionButtons extends LiveModelElement {
         }
       </style>
       <div class="reaction-group">
-        ${reactions.map(({ type }) => {
+        ${this.reactions.map(({ type }) => {
     const users = this.live[type] || [];
     const active = users.includes(userId);
     return `<button type="button" data-type="${type}" ${active ? 'active' : ''} tabindex="0">
-            <i class="fa-solid ${faIcons[type]}"></i> <span class="reaction-count">${users.length}</span>
+            <i class="fa-solid ${this.faIcons[type]}"></i> <span class="reaction-count">${users.length}</span>
           </button>`;
   }).join('')}
       </div>
@@ -132,6 +165,14 @@ class reactionButtons extends LiveModelElement {
     } else {
       // Add reaction
       this.live[type] = [...users, userId];
+      // remove reactions that are turned off by this reaction
+      this.reactionTurnsOff[type].forEach(turnOffType => {
+        const turnOffUsers = this.live[turnOffType] || [];
+        if (turnOffUsers.includes(userId)) {
+          this.live[turnOffType] = turnOffUsers.filter(uid => uid !== userId);
+        }
+      }
+      );
     }
   }
 }

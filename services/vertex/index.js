@@ -7,7 +7,6 @@ const VexList = require('./vexlist.model');
 const User = require('../users/js/users.model');
 const Reaction = mongoose.model('Reaction'); // Adjust the path as necessary
 const router = require('express').Router();
-
 // console log the pre hooks on reaction
 // use json
 router.use(express.json());
@@ -133,6 +132,26 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const vertex = await Vertex.findById(req.params.id).populate('createdBy', 'username');
+
+    // if user is logged in, add myReactions array like ["upvote", "downvote"]
+
+    if (req.user) {
+      const userId = req.user.id;
+      vertex.myReactions = Object.keys(vertex.reactions || {}).filter(
+        key => vertex.reactions[key]?.includes(userId)
+      );
+    }
+    // for each reaciton, only send the coiunt
+    if (vertex.reactions) {
+      vertex.reactions = {
+        upvote: vertex.reactions.upvote.length,
+        downvote: vertex.reactions.downvote.length,
+        flagged: vertex.reactions.flagged.length,
+        offtopic: vertex.reactions.offtopic.length,
+        join: vertex.reactions.join.length
+      };
+    }
+
     if (!vertex) {
       return res.status(404).json({ error: 'Vertex not found' });
     }
@@ -144,40 +163,44 @@ router.get('/:id', async (req, res) => {
 
 // Get all children of a vertex by ID
 router.get('/:id/children/:sorting', async (req, res) => {
-  try {
-    const vertex = await Vertex.findById(req.params.id);
-    if (!vertex) {
-      return res.status(404).json({ error: 'Vertex not found' });
-    }
-
-    // Fetch all children in a single query with populated createdBy
-    const children = await Vertex.find({ _id: { $in: vertex.children } }).populate('createdBy', 'username');
-
-    // Sort based on path parameter
-    const sortBy = req.params.sorting;
-    if (sortBy === 'upvotes') {
-      children.sort((a, b) => {
-        const aUpvotes = (a.userReactions?.upvote || []).length;
-        const bUpvotes = (b.userReactions?.upvote || []).length;
-        return bUpvotes - aUpvotes;
-      });
-    } else if (sortBy === 'hot') {
-      children.sort((a, b) => {
-        const aUpvotes = (a.userReactions?.upvote || []).length;
-        const bUpvotes = (b.userReactions?.upvote || []).length;
-        const aScore = Math.log10(aUpvotes + 1) * 287015 + a.createdAt.getTime() / 1000;
-        const bScore = Math.log10(bUpvotes + 1) * 287015 + b.createdAt.getTime() / 1000;
-        return bScore - aScore;
-      });
-    } else {
-      // Default sort by date (newest first)
-      children.sort((a, b) => b.createdAt - a.createdAt);
-    }
-
-    res.status(200).json(children);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  // try {
+  const vertex = await Vertex.findById(req.params.id);
+  if (!vertex) {
+    return res.status(404).json({ error: 'Vertex not found' });
   }
+
+  // Fetch all children in a single query with populated createdBy
+  const children = await Vertex.find({ _id: { $in: vertex.children } }).populate('createdBy', 'username');
+
+  // Sort based on path parameter
+  const sortBy = req.params.sorting;
+  if (sortBy === 'upvotes') {
+    children.sort((a, b) => {
+      const aUpvotes = (a.reactions.upvote || []).length;
+      const bUpvotes = (b.reactions.upvote || []).length;
+      const aDownvotes = (a.reactions.downvote || []).length;
+      const bDownvotes = (b.reactions.downvote || []).length;
+      const aScore = aUpvotes - aDownvotes;
+      const bScore = bUpvotes - bDownvotes;
+      return bScore - aScore;
+    });
+  } else if (sortBy === 'hot') {
+    children.sort((a, b) => {
+      const aUpvotes = (a.userReactions?.upvote || []).length;
+      const bUpvotes = (b.userReactions?.upvote || []).length;
+      const aScore = Math.log10(aUpvotes + 1) * 287015 + a.createdAt.getTime() / 1000;
+      const bScore = Math.log10(bUpvotes + 1) * 287015 + b.createdAt.getTime() / 1000;
+      return bScore - aScore;
+    });
+  } else {
+    // Default sort by date (newest first)
+    children.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  res.status(200).json(children);
+  // } catch (error) {
+  // res.status(500).json({ error: error.message });
+  // }
 });
 
 // Get all parents of a vertex by ID
@@ -198,32 +221,57 @@ router.get('/:id/parents', async (req, res) => {
 
 // get ancestry (the ids and content of all parents, grandparents, etc.)
 router.get('/:id/ancestry', async (req, res) => {
-  try {
-    const vertex = await Vertex.findById(req.params.id);
-    if (!vertex) {
-      return res.status(404).json({ error: 'Vertex not found' });
-    }
-
-    const ancestry = [];
-    let currentVertex = vertex;
-
-    while (currentVertex) {
-      // Populate the current vertex with creator info
-      const populatedVertex = await Vertex.findById(currentVertex._id).populate('createdBy', 'username');
-      ancestry.unshift({
-        id: populatedVertex._id,
-        content: populatedVertex.content,
-        createdBy: populatedVertex.createdBy
-      });
-      currentVertex = await Vertex.findById(currentVertex.parents[0]); // Get the first parent
-    }
-    // dont include the root vertex
-    ancestry.pop();
-
-    res.status(200).json(ancestry);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  console.log('get ancestry', req.params.id);
+  // try {
+  const vertex = await Vertex.findById(req.params.id);
+  if (!vertex) {
+    return res.status(404).json({ error: 'Vertex not found' });
   }
+
+  console.log('vertex.aggregate starting');
+  // first, find { _id: req.params.id }
+  const thisone = await Vertex.find({ _id: req.params.id });
+
+  const ancestry = await Vertex.aggregate([
+    {
+      $match: { _id: thisone[0]._id }
+    },
+    {
+      $graphLookup: {
+        from: 'vertexes',
+        startWith: '$parents',
+        connectFromField: 'parents',
+        connectToField: '_id',
+        as: 'ancestry',
+        depthField: 'depth'
+      }
+    },
+    {
+      $unwind: '$ancestry'
+    },
+    {
+      $sort: { 'ancestry.depth': -1 }
+    },
+    {
+      $project: {
+        'ancestry._id': 1,
+        'ancestry.content': 1
+      }
+    }
+  ]);
+
+  const formattedAncestry = ancestry.map(item => ({
+    id: item.ancestry._id,
+    content: item.ancestry.content
+  }));
+  console.log('ancestry', formattedAncestry);
+  // dont include the root vertex
+  ancestry.pop();
+
+  res.status(200).json(formattedAncestry);
+  // } catch (error) {
+  //   res.status(500).json({ error: error.message });
+  // }
 });
 
 // Update a vertex by ID
@@ -270,6 +318,29 @@ router.get('/list/:user/subscribed', async (req, res) => {
 
     // Fetch all vexes in the vexlist
     const vexes = await Vertex.find({ _id: { $in: vexlist.vertices } }).populate('createdBy', 'username');
+    vexes.forEach(vertex => {
+      // if user is logged in, add myReactions array like ["upvote", "downvote"]
+
+      if (req.user) {
+        const userId = req.user.id;
+        vertex.myReactions = Object.keys(vertex.userReactions || {}).filter(
+          key => vertex.userReactions[key]?.includes(userId)
+        );
+      }
+      // for each reaciton, only send the coiunt
+      if (vertex.reactions) {
+        vertex.reactions = {
+          upvote: vertex.reactions.upvote.length,
+          downvote: vertex.reactions.downvote.length,
+          flagged: vertex.reactions.flagged.length,
+          offtopic: vertex.reactions.offtopic.length,
+          join: vertex.reactions.join.length
+        };
+      }
+
+      return vertex;
+    });
+
     res.status(200).json(vexes);
   } catch (error) {
     res.status(500).json({ error: error.message });

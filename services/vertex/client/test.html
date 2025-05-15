@@ -30,6 +30,8 @@
     <script src="./vexlist.js"></script>
     <script src="./vexreactions.js"></script>
     <script src="./vexthread.js"></script>
+    <script src="./sliding-page.js"></script>
+    <script src="./vex-sliding-threads.js"></script>
     <script src="./ordinal-slider.js"></script>
     <script src="./vexsortcontrols.js"></script>
     <script src="/vex/reactions/static/reactionbuttons.js"></script>
@@ -37,6 +39,7 @@
     <script src="/vex/user/static/userstatus.js"></script>
     <script src="http://localhost:35729/livereload.js?snipver=1"></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 
     <style>
       html, body {
@@ -46,6 +49,7 @@
       }
 
       body {
+        position: relative;
         font-family: Arial, sans-serif;
         background: #defcfe;
         box-sizing: border-box;
@@ -81,6 +85,8 @@
       }
 
       .user-status-container {
+        position: relative;
+        z-index: 1000;
         flex-shrink: 0;
         display: flex;
         justify-content: flex-end;
@@ -108,6 +114,13 @@
         top: 10px;
         right: 10px;
         padding: 10px;
+      }
+
+      vex-sliding-threads {
+        width: 100%;
+        height: 100%;
+        overflow: scroll
+        ;
       }
 
       .auth-buttons a {
@@ -191,16 +204,9 @@
       
       const mainContainer = document.querySelector(".main-container");
       mainContainer.innerHTML =`
-            <div class="square-list-container">
-        <vex-list id="square-list" view-mode="activesquare"></vex-list>
-      </div>
-      <div class="thread-container">
-        <vex-thread id="main-vex-thread"></vex-thread>
-      </div>`
-
-
-
-
+  <div class="thread-container">
+    <vex-sliding-threads id="main-sliding-threads"></vex-sliding-threads>
+  </div>`;
 
       const urlParams = new URLSearchParams(window.location.search);
       let vexId = urlParams.get("id");
@@ -208,25 +214,24 @@
         console.error("No vex id provided in the URL");
         vexId = "681e0e6520bfd6f055f01b24";
       }
-      
-      // Set vex-id on the thread component
-      const thread = document.getElementById("main-vex-thread");
-      thread.setAttribute("vex-id", vexId);
 
       // Set parent-vex on the square list
-      const squareList = document.getElementById("square-list");
-      squareList.setAttribute("parent-vex", vexId);
-      squareList.onClick = function(vex){
-        // set all other items in list to inactive
-        squareList.shadowRoot.querySelectorAll('vex-display').forEach(el => {console.log("EL", el);el.setAttribute('view-mode','square');console.log("EL after", el);});
-        // find vex-display with vex.detail.vexId
-        console.log('vex.detail',vex.detail)
-        const clickedVex = squareList.shadowRoot.querySelector(`vex-display[vex-id="${vex.detail.vexId}"]`);
-        clickedVex.setAttribute('view-mode','activesquare');
-        console.log(vex.detail.vexId)
-        thread.setAttribute('vex-id',vex.detail.vexId);
-      }
+      // const squareList = document.getElementById("square-list");
+      // squareList.setAttribute("parent-vex", vexId);
 
+      // Set initial vex-id on the sliding threads
+      const slidingThreads = document.getElementById("main-sliding-threads");
+      slidingThreads.setAttribute("vex-id", vexId);
+
+      // squareList.onClick = function(vex){
+      //   squareList.shadowRoot.querySelectorAll('vex-display').forEach(el => {
+      //     el.setAttribute('view-mode','square');
+      //   });
+      //   const clickedVex = squareList.shadowRoot.querySelector(`vex-display[vex-id="${vex.detail.vexId}"]`);
+      //   if (clickedVex) clickedVex.setAttribute('view-mode','activesquare');
+      //   // Do NOT set vex-id on slidingThreads or create a new thread here;
+      //   // this is now handled inside vex-sliding-threads when a vex-list is clicked inside a thread page.
+      // }
 
       const state = reactive();
 

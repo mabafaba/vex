@@ -52,14 +52,14 @@ class VexThread extends HTMLElement {
       });
     // Listen for clicks on vex-list items (if you emit events from vex-list)
     // You may need to forward events from vex-display in vex-list for this to work
-    this.shadowRoot.getElementById('vex-list').onClick = (event) => {
-      if (event && event.detail && event.detail.vexId) {
-        this.setAttribute('vex-id', event.detail.vexId);
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('id', event.detail.vexId);
-        window.history.pushState({}, '', newUrl);
-      }
-    };
+    // this.shadowRoot.getElementById('vex-list').onClick = (event) => {
+    //   if (event && event.detail && event.detail.vexId) {
+    //     this.setAttribute('vex-id', event.detail.vexId);
+    //     const newUrl = new URL(window.location.href);
+    //     newUrl.searchParams.set('id', event.detail.vexId);
+    //     window.history.pushState({}, '', newUrl);
+    //   }
+    // };
     // add event listener for vex-list-unauthorized
     const vexList = this.shadowRoot.getElementById('vex-list');
     console.log('adding vex-list-unauthorized listener');
