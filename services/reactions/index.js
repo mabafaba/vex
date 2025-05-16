@@ -1,13 +1,8 @@
 
 const router = require('./server/reaction.router');
+const Reaction = require('./server/reaction.model');
 
-function reactions (io) {
-  const Reaction = require('./server/reaction.model')(io);
-  return ({
-    router,
-    Reaction
-  }
-  );
-}
-
-module.exports = reactions;
+module.exports = {
+  router,
+  Reaction
+};

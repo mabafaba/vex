@@ -338,8 +338,11 @@ class VexComponent extends HTMLElement {
     const reactionButtons = this.shadowRoot.querySelector('reaction-buttons');
     if (reactionButtons) {
       // console.log('vex:', vex);
-      console.log('reactionButtons:', vex.reactions);
-      reactionButtons.connect('Reaction', vex.reactions);
+      if (!vex.reactions) {
+        console.warn('vex has no reactions id');
+      } else {
+        reactionButtons.connect('/vex/reactions', vex.reactions);
+      }
     }
 
     // Set the correct class for view mode

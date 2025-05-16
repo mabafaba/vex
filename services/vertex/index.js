@@ -7,6 +7,7 @@ const VexList = require('./vexlist.model');
 const User = require('../users/js/users.model');
 const Reaction = mongoose.model('Reaction'); // Adjust the path as necessary
 const router = require('express').Router();
+const io = require('../utils/io')();
 // console log the pre hooks on reaction
 // use json
 router.use(express.json());
@@ -48,7 +49,7 @@ router.post('/', async (req, res) => {
       await parent.save();
       console.log('parent saved', parent);
       // Emit socket event for each parent to notify listeners that a new child was added
-      const io = req.app.get('io');
+
       if (io) {
         console.log(
           `Emitting newChild event to parent to room: vex-${parent._id}`
@@ -132,25 +133,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const vertex = await Vertex.findById(req.params.id).populate('createdBy', 'username');
+    console.log('vertex', vertex);
 
     // if user is logged in, add myReactions array like ["upvote", "downvote"]
-
-    if (req.user) {
-      const userId = req.user.id;
-      vertex.myReactions = Object.keys(vertex.reactions || {}).filter(
-        key => vertex.reactions[key]?.includes(userId)
-      );
-    }
-    // for each reaciton, only send the coiunt
-    if (vertex.reactions) {
-      vertex.reactions = {
-        upvote: vertex.reactions.upvote.length,
-        downvote: vertex.reactions.downvote.length,
-        flagged: vertex.reactions.flagged.length,
-        offtopic: vertex.reactions.offtopic.length,
-        join: vertex.reactions.join.length
-      };
-    }
 
     if (!vertex) {
       return res.status(404).json({ error: 'Vertex not found' });
@@ -318,28 +303,6 @@ router.get('/list/:user/subscribed', async (req, res) => {
 
     // Fetch all vexes in the vexlist
     const vexes = await Vertex.find({ _id: { $in: vexlist.vertices } }).populate('createdBy', 'username');
-    vexes.forEach(vertex => {
-      // if user is logged in, add myReactions array like ["upvote", "downvote"]
-
-      if (req.user) {
-        const userId = req.user.id;
-        vertex.myReactions = Object.keys(vertex.userReactions || {}).filter(
-          key => vertex.userReactions[key]?.includes(userId)
-        );
-      }
-      // for each reaciton, only send the coiunt
-      if (vertex.reactions) {
-        vertex.reactions = {
-          upvote: vertex.reactions.upvote.length,
-          downvote: vertex.reactions.downvote.length,
-          flagged: vertex.reactions.flagged.length,
-          offtopic: vertex.reactions.offtopic.length,
-          join: vertex.reactions.join.length
-        };
-      }
-
-      return vertex;
-    });
 
     res.status(200).json(vexes);
   } catch (error) {

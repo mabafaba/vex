@@ -1,39 +1,34 @@
 const mongoose = require('mongoose');
 const registeredModels = new Map();
-let ioInstance = null;
+const io = require('../io')();
+const initialized = false;
 
-function initGlobalListeners (io) {
-  if (ioInstance) {
-    return;
-  }
-  ioInstance = io;
-  io.on('connection', socket => {
-    console.log('socket connected', socket.id);
+io.on('connection', socket => {
+  console.log('socket connected', socket.id);
 
-    socket.on('live-model-element-subscribe', async ({ modelName, id }) => {
-      if (!modelName || !id) {
-        console.error('LiveModelElement: connect() requires modelName and id');
-        return;
-      }
-      const Model = registeredModels.get(modelName);
-      if (!Model) {
-        console.error('LiveModelElement: No model found for', modelName);
-        return;
-      }
-      socket.join(`${modelName}:${id}`);
-    
+  // Subscribe: join a room based on endpoint string
+  socket.on('live-model-element-subscribe', async ({ endpoint }) => {
+    if (!endpoint) {
+      console.error('LiveModelElement: connect() requires endpoint');
+      return;
     }
-  );
-    socket.on('live-model-element-unsubscribe', ({ modelName, id }) => {
-      socket.leave(`${modelName}:${id}`);
-    });
+    console.log('subscribing to', endpoint);
+    socket.join(`live-model-element-update:${endpoint}`);
   });
-}
 
-function liveModel (modelName, schema, endpoint, io) {
-  if (!io) {
-    throw new Error('Socket.io instance is required');
-  }
+  // Unsubscribe: leave the room
+  socket.on('live-model-element-unsubscribe', ({ endpoint }) => {
+    if (!endpoint) {
+      return;
+    }
+    socket.leave(`live-model-element-update:${endpoint}`);
+  });
+});
+
+function liveModel (modelName, schema, url) {
+  // if (!io) {
+  //   throw new Error('Socket.io instance is required');
+  // }
   if (!schema || !modelName) {
     throw new Error('Schema and modelName are required');
   }
@@ -42,18 +37,21 @@ function liveModel (modelName, schema, endpoint, io) {
     return registeredModels.get(modelName);
   }
 
-  schema.post('findOneAndUpdate', async function (doc) {
-    const model = modelName;
-    const id = doc._id;
-    // send event with model and id (dont send the whole doc)
-    ioInstance.to(`${modelName}:${doc._id}`).emit('live-model-element-update', { model, id, endpoint });
-  });
+  // Add a liveUpdate instance method to the schema
+  schema.methods.updateClients = function () {
+    if (!url) {
+      return;
+    }
+    const endpoint = `${url}/${this._id}`;
+    const eventName = `live-model-element-update:${endpoint}`;
+    console.log('emitting', eventName);
+    io.to(eventName).emit(eventName);
+  };
 
   // Register the model
   const Model = mongoose.model(modelName, schema);
   registeredModels.set(modelName, Model);
 
-  initGlobalListeners(io);
   return Model;
 }
 

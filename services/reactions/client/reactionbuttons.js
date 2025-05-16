@@ -10,12 +10,14 @@ class reactionButtons extends LiveModelElement {
       { type: 'join' }
     ];
 
-    this.myReactions = {
-      flagged: false,
-      offtopic: false,
-      downvote: false,
-      upvote: false,
-      join: false
+    this.live = { counts: {
+      flagged: 0,
+      offtopic: 0,
+      downvote: 0,
+      upvote: 0,
+      join: 0
+    },
+    myReactions: []
     };
 
     this.reactionTurnsOff = {
@@ -56,12 +58,14 @@ class reactionButtons extends LiveModelElement {
   }
 
   render () {
-    console.log('rendering reaction buttons', this.live);
+    console.log('rendering reaction buttons', this.id, this.live);
 
     // console.log('rendering reaction buttons', this.live);
     if (!this.live) {
       return;
     }
+
+    console.log(this.live);
     const userId = this.userId;
 
     this.shadowRoot.innerHTML = `
@@ -137,10 +141,10 @@ class reactionButtons extends LiveModelElement {
       </style>
       <div class="reaction-group">
         ${this.reactions.map(({ type }) => {
-    const users = this.live[type] || [];
-    const active = users.includes(userId);
+    const count = this.live.counts[type];
+    const active = this.live.myReactions.includes(type);
     return `<button type="button" data-type="${type}" ${active ? 'active' : ''} tabindex="0">
-            <i class="fa-solid ${this.faIcons[type]}"></i> <span class="reaction-count">${users.length}</span>
+            <i class="fa-solid ${this.faIcons[type]}"></i> <span class="reaction-count">${count}</span>
           </button>`;
   }).join('')}
       </div>
@@ -154,26 +158,30 @@ class reactionButtons extends LiveModelElement {
   }
 
   toggleReaction (type) {
-    const userId = this.userId;
-    if (!userId || !this.live) {
-      return;
-    }
-    const users = this.live[type] || [];
-    if (users.includes(userId)) {
-      // Remove reaction
-      this.live[type] = users.filter(uid => uid !== userId);
+    // Toggle the reaction in myReactions
+    if (this.live.myReactions.includes(type)) {
+      this.live.myReactions = this.live.myReactions.filter(t => t !== type);
+      this.live.counts[type]--;
     } else {
-      // Add reaction
-      this.live[type] = [...users, userId];
-      // remove reactions that are turned off by this reaction
+      this.live.myReactions.push(type);
+      this.live.counts[type]++;
+      // Remove the reactions that are turned off
       this.reactionTurnsOff[type].forEach(turnOffType => {
-        const turnOffUsers = this.live[turnOffType] || [];
-        if (turnOffUsers.includes(userId)) {
-          this.live[turnOffType] = turnOffUsers.filter(uid => uid !== userId);
+        if (this.live.myReactions.includes(turnOffType)) {
+          this.live.myReactions = this.live.myReactions.filter(t => t !== turnOffType);
+          this.live.counts[turnOffType]--;
         }
-      }
-      );
+      });
     }
+    // this.render();
+    // Post the updated reactions array to the server
+    fetch(`/vex/reactions/${this.id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ reactions: this.live.myReactions })
+    });
   }
 }
 

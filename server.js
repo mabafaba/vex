@@ -2,7 +2,6 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const userService = require('./services/users');
-const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 
@@ -20,21 +19,11 @@ connectDB('vex')
 const port = 3005;
 const app = express();
 const server = require('http').createServer(app);
-
+console.log('Server created');
+const io = require('./services/utils/io')(server);
 // Initialize socket.io with more permissive CORS to fix connection issues
-const io = socketIo(server, {
-  cors: {
-    origin: '*', // Allow all origins
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
-  },
 
-  path: '/socket.io', // Make sure path matches client expectations
-  transports: ['websocket', 'polling'] // Support multiple transport methods
-});
-
-const reactionsService = require('./services/reactions')(io);
+const reactionsService = require('./services/reactions');
 const vertexService = require('./services/vertex');
 const geodataService = require('./services/geodata');
 
@@ -100,7 +89,7 @@ app.use('/vex/utils', express.static('services/utils'));
 // Serve livemodelelement directory as static for client-side imports
 app.use('/vex/services/livemodelelement', express.static(__dirname + '/services/livemodelelement'));
 
-app.use('/vex/reactions',  reactionsService.router);
+app.use('/vex/reactions', authenticate, reactionsService.router);
 
 app.use('/vex/vertex', authenticate, authorize, vertexService.router);
 
@@ -162,9 +151,6 @@ io.on('connection', (socket) => {
     console.log('Client disconnected', socket.id, 'user:', socket.user?.name);
   });
 });
-
-// Make io accessible to other modules
-app.set('io', io);
 
 server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
