@@ -1,7 +1,6 @@
 const socketIo = require('socket.io');
 let ioInstance = false;
 function io (server) {
-  console.log('io', ioInstance);
   if (ioInstance) {
     return ioInstance;
   }

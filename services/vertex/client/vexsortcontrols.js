@@ -16,6 +16,17 @@ class VexSortControls extends HTMLElement {
     }
   }
 
+  set vexList (el) {
+    this._vexList = el;
+    if (el && typeof el.sortBy === 'function') {
+      el.sortBy(this._currentSort);
+    }
+  }
+
+  get vexList () {
+    return this._vexList;
+  }
+
   render () {
     this.shadowRoot.innerHTML = `
       <style>
@@ -69,11 +80,11 @@ class VexSortControls extends HTMLElement {
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const sort = tab.dataset.sort;
-        this.dispatchEvent(new CustomEvent('sort-changed', {
-          detail: { sort },
-          bubbles: true,
-          composed: true
-        }));
+        this._currentSort = sort;
+        this.render();
+        if (this._vexList && typeof this._vexList.sortBy === 'function') {
+          this._vexList.sortBy(sort);
+        }
       });
     });
   }

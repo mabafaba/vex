@@ -49,7 +49,6 @@
 
     // Handle connection events
     this.socket.on('connect', () => {
-      console.log('Socket connected');
       this.connectionAttempts = 0;
       this.notifyConnectionListeners('connected');
     });

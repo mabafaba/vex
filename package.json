@@ -7,7 +7,7 @@
     "docker": "docker build -t vex . && docker compose up",
     "deploy": "git pull && docker build -t vex . && docker compose up",
     "dev": "nodemon server.js",
-    "watch": "browser-sync start --proxy 'localhost:3000' --watch true",
+    "watch": "browser-sync start --proxy 'localhost:3005' --watch true",
     "lint": "eslint . --fix"
   },
   "author": "",
@@ -29,6 +29,7 @@
     "express": "^4.21.2",
     "fs": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",
+    "madge": "^8.0.0",
     "mongoose": "^8.13.1",
     "path": "^0.12.7",
     "sanitize-html": "^2.15.0",

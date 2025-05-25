@@ -53,7 +53,7 @@
         font-family: Arial, sans-serif;
         background: #defcfe;
         box-sizing: border-box;
-        padding: 30px;
+        padding: 0px;
         display: flex;
         flex-direction: column;
         max-width: 1000px;
@@ -205,14 +205,14 @@
       const mainContainer = document.querySelector(".main-container");
       mainContainer.innerHTML =`
   <div class="thread-container">
-    <vex-sliding-threads id="main-sliding-threads"></vex-sliding-threads>
+    <vex-thread id="main-sliding-threads"></vex-thread>
   </div>`;
 
       const urlParams = new URLSearchParams(window.location.search);
       let vexId = urlParams.get("id");
       if (!vexId) {
         console.error("No vex id provided in the URL");
-        vexId = "681e0e6520bfd6f055f01b24";
+        vexId = "682a12bb3f307bbbdd111053";
       }
 
       // Set parent-vex on the square list
@@ -222,6 +222,31 @@
       // Set initial vex-id on the sliding threads
       const slidingThreads = document.getElementById("main-sliding-threads");
       slidingThreads.setAttribute("vex-id", vexId);
+      
+      // vex-main-click listener
+      slidingThreads.addEventListener("vex-main-click", (e) => {
+        // do nothing if the vex is already open
+        if (slidingThreads.getAttribute("vex-id") === e.detail.vexId) {
+          return;
+        }
+        const vexId = e.detail.vexId;
+        // Set the vex-id on the sliding threads
+        slidingThreads.setAttribute("vex-id", vexId);
+        slideNext(mainContainer, 300, () => {
+          
+        });
+
+      });
+
+      // breadcrumb-click listener
+      slidingThreads.addEventListener("breadcrumb-click", (e) => {
+        console.log("Breadcrumb clicked:", e.detail);
+        const vexId = e.detail.vexId;
+        // Set the vex-id on the sliding threads
+        slidePrev(slidingThreads, 400, () => {
+          slidingThreads.setAttribute("vex-id", vexId);
+        });
+      });
 
       // squareList.onClick = function(vex){
       //   squareList.shadowRoot.querySelectorAll('vex-display').forEach(el => {
@@ -235,6 +260,80 @@
 
       const state = reactive();
 
+      // login-success event on user-status should reload the page
+      document.addEventListener("login-success", () => {
+        location.reload();
+      });
+
+
+      // swipepageanimation.js
+
+/**
+ * Slides the content of a container out to the left, then brings it back in from the right.
+ * @param {HTMLElement} container - The container whose content will be animated.
+ * @param {number} duration - Animation duration in ms.
+ * @returns {Promise<void>}
+ */
+ function slideNext (container, duration = 400, onAway = () => {}, onFinish = () => {}) {
+  return new Promise((resolve) => {
+    container.style.transition = `transform ${duration / 2}ms ease`;
+    container.style.transform = 'translateX(-100%)';
+
+    setTimeout(() => {
+      onAway();
+      container.style.transition = 'none';
+      container.style.transform = 'translateX(100%)';
+
+      // Force reflow to apply the transform immediately
+      void container.offsetWidth;
+
+      container.style.transition = `transform ${duration / 2}ms ease`;
+      container.style.transform = 'translateX(0)';
+
+      setTimeout(() => {
+        container.style.transition = '';
+        onFinish();
+        resolve();
+      }, duration / 2);
+    }, duration / 2);
+  });
+}
+
+/**
+ * Slides the content of a container out to the right, then brings it back in from the left.
+ * @param {HTMLElement} container - The container whose content will be animated.
+ * @param {number} duration - Animation duration in ms.
+ * @returns {Promise<void>}
+ */
+ function slidePrev (container, duration = 400, onAway = () => {}, onFinish = () => {}) {
+  
+  return new Promise((resolve) => {
+    container.style.transition = `transform ${duration / 2}ms ease`;
+    container.style.transform = 'translateX(100%)';
+
+    setTimeout(() => {
+      onAway();
+      container.style.transition = 'none';
+      container.style.transform = 'translateX(-100%)';
+
+      // Force reflow to apply the transform immediately
+      void container.offsetWidth;
+
+      container.style.transition = `transform ${duration / 2}ms ease`;
+      container.style.transform = 'translateX(0)';
+
+      setTimeout(() => {
+        onFinish();
+        container.style.transition = '';
+        resolve();
+      }, duration / 2);
+    }, duration / 2);
+  });
+}
+
+
+
+      
 
     </script>
   </body>

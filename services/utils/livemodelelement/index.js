@@ -4,15 +4,12 @@ const io = require('../io')();
 const initialized = false;
 
 io.on('connection', socket => {
-  console.log('socket connected', socket.id);
-
   // Subscribe: join a room based on endpoint string
   socket.on('live-model-element-subscribe', async ({ endpoint }) => {
     if (!endpoint) {
       console.error('LiveModelElement: connect() requires endpoint');
       return;
     }
-    console.log('subscribing to', endpoint);
     socket.join(`live-model-element-update:${endpoint}`);
   });
 
@@ -44,7 +41,6 @@ function liveModel (modelName, schema, url) {
     }
     const endpoint = `${url}/${this._id}`;
     const eventName = `live-model-element-update:${endpoint}`;
-    console.log('emitting', eventName);
     io.to(eventName).emit(eventName);
   };
 

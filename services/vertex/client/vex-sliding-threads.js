@@ -7,6 +7,15 @@ class VexSlidingThreads extends HTMLElement {
   }
 
   connectedCallback () {
+    this.init();
+  }
+
+  init () {
+    this.vexId = this.getAttribute('vex-id');
+    if (!this.vexId) {
+      console.warn('No vex-id attribute found.');
+      return;
+    }
     this.render();
     this.initFirstThread();
     this.listenForClickEvents();
@@ -36,12 +45,14 @@ class VexSlidingThreads extends HTMLElement {
    * Initialize the first thread page from attribute or default
    */
   initFirstThread () {
-    let vexId = this.getAttribute('vex-id');
+    const vexId = this.getAttribute('vex-id');
 
     if (!vexId) {
       // fallback default
-      vexId = '681e0e6520bfd6f055f01b24';
+      console.warn('No vex-id attribute found.');
+      return;
     }
+
     this.addThreadPage(vexId);
   }
 
@@ -55,7 +66,7 @@ class VexSlidingThreads extends HTMLElement {
     thread.setAttribute('vex-id', vexId);
     sliderPage.appendChild(thread);
     this._slider.appendChild(sliderPage);
-    this._slider.updatePages && this._slider.updatePages();
+    this._slider.updatePages();
     // Use the public API to get the pages array after updatePages
     let pages = this._slider._pages;
     if (!pages) {
@@ -67,7 +78,6 @@ class VexSlidingThreads extends HTMLElement {
 
   listenForClickEvents () {
     this.addEventListener('vex-main-click', (event) => {
-      console.log('Vex main click event:', event);
       const vexId = event.detail.vexId;
       if (vexId && vexId == this.activeThread) {
         return;
@@ -78,10 +88,19 @@ class VexSlidingThreads extends HTMLElement {
     });
 
     this.addEventListener('breadcrumb-click', (event) => {
-      console.log('Breadcrumb click event:', event);
-      const vexId = event.detail.vexId;
-      if (vexId) {
-        this.addThreadPage(vexId);
+      console.log('Breadcrumb clicked:', event.detail);
+
+      // check which page has same vexId as the breadcrumb
+      const clickedVexId = event.detail.vexId;
+      const pages = Array.from(this._slider.children)
+        .filter(child => child.tagName && child.tagName.toLowerCase() === 'slider-page');
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        const thread = page.querySelector('vex-thread');
+        if (thread && thread.getAttribute('vex-id') === clickedVexId) {
+          this._slider.slideTo(i);
+          break;
+        }
       }
     }
     );

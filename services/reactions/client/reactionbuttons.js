@@ -58,14 +58,11 @@ class reactionButtons extends LiveModelElement {
   }
 
   render () {
-    console.log('rendering reaction buttons', this.id, this.live);
-
-    // console.log('rendering reaction buttons', this.live);
+    console.log('start rendering at', new Date().getMilliseconds());
     if (!this.live) {
       return;
     }
 
-    console.log(this.live);
     const userId = this.userId;
 
     this.shadowRoot.innerHTML = `
@@ -151,13 +148,16 @@ class reactionButtons extends LiveModelElement {
     `;
     this.shadowRoot.querySelectorAll('button').forEach(btn => {
       btn.onclick = e => {
+        console.log('button clicked', e.currentTarget.dataset.type, 'at', new Date().getMilliseconds());
         e.stopPropagation();
         this.toggleReaction(e.currentTarget.dataset.type);
       };
     });
+    console.log('end rendering at', new Date().getMilliseconds());
   }
 
   toggleReaction (type) {
+    console.log('toggle reaction', type, 'at', new Date().getMilliseconds());
     // Toggle the reaction in myReactions
     if (this.live.myReactions.includes(type)) {
       this.live.myReactions = this.live.myReactions.filter(t => t !== type);
@@ -173,15 +173,30 @@ class reactionButtons extends LiveModelElement {
         }
       });
     }
-    // this.render();
+
+    console.log('local edits done at', new Date().getMilliseconds());
+
     // Post the updated reactions array to the server
+    console.log('posting reaction at time', new Date().getMilliseconds());
     fetch(`/vex/reactions/${this.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ reactions: this.live.myReactions })
-    });
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to post reaction');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Reaction posted successfully at:', new Date().getMilliseconds());
+      })
+      .catch(error => {
+        console.error('Error posting reaction:', error);
+      });
   }
 }
 

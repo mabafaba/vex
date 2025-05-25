@@ -7,12 +7,12 @@ class VexInputComponent extends HTMLElement {
             <style>
                 .vex-container {
                     display: flex;
+                    background-color: #EFDAFFAB;  
                     flex-direction: column;
-                    gap: 10px;
                     margin: 0 auto;
                     box-sizing: border-box;
-                    border: 1px solid #ccc; 
-                    border-radius: 11px;
+                    /* border: 1px solid #ccc;  */
+                    border-radius: 0px;
                     padding: 12px;
                 }
                 .input-row {
@@ -22,17 +22,21 @@ class VexInputComponent extends HTMLElement {
                 }
                 input {
                     width: 100%;
+                    background-color: #fff;
                     padding: 8px 4px;
                     font-size: 16px;
-                    border: none;
+                    border: 1px dotted #ccc;
+                    border-radius: 15px;
                     outline: none;
-                    background-color: transparent;
+                    /* background-color: transparent; */
                     box-sizing: border-box;
                 }
                 .reach-row {
                     display: flex;
                     align-items: center;
                     gap: 10px;
+                    height: 50px;
+                    transition: all 0.2s ease;
                 }
                 button {
                     min-width: 36px;
@@ -58,7 +62,9 @@ class VexInputComponent extends HTMLElement {
                     margin-bottom: 0;
                     padding-top: 0;
                     padding-bottom: 0;
-                    transition: all 0.2s ease;
+                    transition: 
+                    visibility: hidden;
+                    pointer-events: none;
                 }
 
                 .reach-value {

@@ -55,7 +55,7 @@ class VexBreadcrumbs extends HTMLElement {
     event.preventDefault();
 
     // Create and dispatch a custom event with the vex ID
-    const crumbClickEvent = new CustomEvent('crumb-click', {
+    const crumbClickEvent = new CustomEvent('breadcrumb-click', {
       detail: { vexId },
       bubbles: true,
       composed: true // Allows the event to pass through shadow DOM boundaries
@@ -78,15 +78,21 @@ class VexBreadcrumbs extends HTMLElement {
                 }
                 
                 .breadcrumb-link {
-                    margin-top:10px;
-                    display: inline-block;
-                    color: #333;
-                    text-decoration: none;
-                    cursor: pointer;
-                    margin-right: 5px;
-                    padding: 4px 8px;
-                    background: rgb(224, 222, 253);
-                    border-radius: 11px;
+                      margin-top: 10px;
+    display: inline-block;
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+    margin-right: 5px;
+    padding: 4px 8px;
+    background: rgb(224, 222, 253);
+    border-radius: 11px;
+    max-width: 100%;
+    box-sizing: border-box; /* ensures padding is included in width */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: top;
                 }
                 
                 .breadcrumb-link:hover {
@@ -97,10 +103,14 @@ class VexBreadcrumbs extends HTMLElement {
                 .breadcrumb-separator {
                     margin: 0 5px;
                     color: #9e9e9e;
+                    display:none;
                 }
 
                 .breadcrumbs-container {
                   min-height: 27px;
+                  max-width: 100%;
+                  overflow: hidden;
+                  width:100%;
                 }
             </style>
             
@@ -110,7 +120,7 @@ class VexBreadcrumbs extends HTMLElement {
       return `
                         <span class="breadcrumb-link" data-vex-id="${
   item.id
-}">${item.content.substring(0, 20)}</span>
+}">${item.content}</span>
                         ${
   index < ancestryData.length - 1
     ? '<span class="breadcrumb-separator">></span>'

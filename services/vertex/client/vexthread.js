@@ -29,14 +29,56 @@ class VexThread extends HTMLElement {
   render () {
     this.shadowRoot.innerHTML = `
       <style>
-        :host { display: block; }
-        .vex-thread-container { width: 100%; }
+        :host { display: block; height: 100%; }
+        .vex-thread-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          width: 100%;
+        }
+        #breadcrumbs {
+          flex: 0 0 auto;
+          margin-bottom: 0em;
+          padding: 0.5em;
+          background: rgb(99, 78, 143)
+                
+        }
+        #main-vex {
+          flex: 0 0 auto;
+          margin-bottom: -15px;
+          z-index: 1;
+        }
+        #vex-list {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+        }
+        #vex-input {
+          flex: 0 0 auto;
+          margin-top: 0px;
+          border-top-left-radius: 10px;
+          border-top-right-radius: 10px;
+
+          
+          
+        }
+        .vex-container {
+          background-color: #E7C9FF;
+          border-top-left-radius: 15px;
+          border-top-right-radius: 15px;
+          margin-left: 0px;
+          margin-right: 0px;
+          padding: 12px;
+          margin-top: -15px;
+        }
       </style>
       <div class="vex-thread-container">
+        <div id="main-vex-display">
         <vex-breadcrumbs id="breadcrumbs"></vex-breadcrumbs>
         <vex-display id="main-vex" view-mode="thread" style="width:100%"></vex-display>
-        <vex-input id="vex-input"></vex-input>
+        </div>
         <vex-list id="vex-list"></vex-list>
+        <vex-input id="vex-input"></vex-input>
       </div>
     `;
     // Listen for breadcrumb navigation
@@ -62,9 +104,7 @@ class VexThread extends HTMLElement {
     // };
     // add event listener for vex-list-unauthorized
     const vexList = this.shadowRoot.getElementById('vex-list');
-    console.log('adding vex-list-unauthorized listener');
     vexList.addEventListener('vex-list-unauthorized', () => {
-      console.log('vex-list-unauthorized event received');
       this.shadowRoot.innerHTML = '';
     });
   }

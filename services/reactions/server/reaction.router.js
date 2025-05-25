@@ -26,9 +26,6 @@ router.get('/:id', async (req, res) => {
       join: reaction.join.length
     };
 
-    console.log('counts', counts);
-    console.log('userId', userId);
-    console.log('reaction', reaction);
     // myReactions = ['upvote', 'join']
     const myReactions = ['flagged', 'offtopic', 'downvote', 'upvote', 'join']
       .filter(type => reaction[type].includes(userId)
@@ -83,7 +80,6 @@ router.post('/:id', async (req, res) => {
     if (!reaction) {
       return res.status(404).json({ error: 'Reaction not found' });
     }
-    console.log('updating clients');
     reaction.updateClients();
     res.json(reaction);
   } catch (err) {

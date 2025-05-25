@@ -115,8 +115,6 @@ class GeoTextInputComponent extends HTMLElement {
         throw new Error(error.error || 'Failed to send vex');
       }
 
-      console.log(response);
-
       const result = await response.json();
       this.shadowRoot.querySelector('#vexContent').value = '';
     } catch (error) {

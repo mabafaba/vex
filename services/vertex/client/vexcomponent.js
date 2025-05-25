@@ -41,6 +41,7 @@ class VexComponent extends HTMLElement {
                 vex-display {
                     background:rgb(244, 222, 253);
                     cursor: pointer;
+
                 }
                 vex-display:hover {
                     background:rgb(238, 195, 255);
@@ -48,24 +49,27 @@ class VexComponent extends HTMLElement {
                     transition: all 0.3s ease-in-out;
                 }
                 .vex {
-                    border-bottom: 1px dotted #444;
-                    /* margin: 10px 0; */
-                    /* border-radius: 11px; */
+                    /* border-bottom: 1px dotted #444; */
+                    /* margin: 10px 0; */                  
                     background: none;
                     box-sizing: border-box;
                     transition: all 0.3s ease-in-out;
                 }
                 .vex-main {
-                    /* background: rgb(224, 222, 253); */
+                    background: rgb(225, 222, 253);
                     /* border-radius: 11px; */
                     padding: 10px;
                     cursor: pointer;
                     transition: all 0.3s ease-in-out;
                 }
-                .vex.thread .vex-main {
-                    background-color: #4B0082;
-                    color: white;
-                    border: 2px solid rgb(125, 5, 133);
+                .vex.thread > .vex-main {
+                    background-color:rgb(99, 78, 143);
+                    color: #FFF;
+                    border-bottom-right-radius: 11px;
+                    border-bottom-left-radius: 11px;
+                    margin-bottom: -12px;
+                    z-index:1;
+                    position: relative;
                 }
                 .vex.square .vex-main {
                     width: 100%;
@@ -155,6 +159,8 @@ class VexComponent extends HTMLElement {
                 .vex.activesquare vex-reactions {
                     display: none;
                 }
+
+
                 .vex.breadcrumb > * {
                     height: 0;
                     overflow: hidden;
@@ -182,6 +188,9 @@ class VexComponent extends HTMLElement {
                     white-space: nowrap;
                 }
 
+                .vex.thread {
+                  border-bottom: none;
+                }
                 .vex.normal > reply-input-container {
                     height: 0;
                     overflow: hidden;
@@ -192,6 +201,11 @@ class VexComponent extends HTMLElement {
                     transition: height 1s, opacity 1s;
                 }
 
+                .vex.normal > .vex-main {
+                    border-radius: 11px;
+                    margin: 5px;
+                    
+                }
                 
                 .vex.hidden {
                     height: 0;
@@ -201,7 +215,8 @@ class VexComponent extends HTMLElement {
                     margin: 0;
                     pointer-events: none;
                     opacity: 0;
-                    transition: height 0.3s, opacity 0.3s ease-in;
+                    
+                    transition: height 3s, opacity 3s ease-in;
                 }
 
                 #vex-content { margin-bottom: 10px; }
@@ -316,6 +331,49 @@ class VexComponent extends HTMLElement {
                     -webkit-box-orient: vertical;
                     overflow: hidden;
                 }
+
+
+                .vex.collapsed .user-name {
+                  display: none;
+                }
+
+                .vex.collapsed #vex-content {
+                  font-size: 0.6em;
+                  color: #888;
+                  margin-bottom: 0;
+                  padding: 2px 4px;
+                  line-height: 1.1;
+                }
+
+                .vex.collapsed reaction-buttons,
+                .vex.collapsed vex-reactions,
+                .vex.collapsed #reply-input-container {
+                  display: none !important;
+                }
+
+                .vex.collapsed .vex-main {
+                  
+                  height: 28px;
+                  color: #888;
+                  border-radius: 5px;
+                  font-size: 0.8em;
+                  overflow: hidden;
+                  box-sizing: border-box;
+                  cursor: pointer;
+                }
+
+                .vex.collapsed {
+                  width: 100%;
+                  height: 28px;
+                  min-height: 0;
+                  min-width: 0;
+                  padding: 0;
+                  margin: 0;
+                  overflow: hidden;
+                  opacity: 0.85;
+                  box-sizing: border-box;
+                }
+
             </style>
             <div class="vex">
                 <div class="vex-main">
@@ -337,7 +395,6 @@ class VexComponent extends HTMLElement {
 
     const reactionButtons = this.shadowRoot.querySelector('reaction-buttons');
     if (reactionButtons) {
-      // console.log('vex:', vex);
       if (!vex.reactions) {
         console.warn('vex has no reactions id');
       } else {
@@ -406,11 +463,11 @@ class VexComponent extends HTMLElement {
             @keyframes bounceAndGloss {
                 0% {
                     transform: scale(1);
-                    box-shadow: none;
+                    
                 }
                 50% {
-                    transform: scale(1.01);
-                    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+                    transform: scale(1.05);
+
                 }
                 
                 100% {

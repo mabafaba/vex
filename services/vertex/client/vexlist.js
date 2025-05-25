@@ -11,6 +11,7 @@ class VexList extends HTMLElement {
     this._onClick = () => {};
     this._connectionListener = null;
     this._currentSort = 'date';
+    this._loading = false;
 
     this.handleNewChild = async (data) => {
       if (data.parentId === this._parentVex) {
@@ -99,6 +100,8 @@ class VexList extends HTMLElement {
     if (!this._parentVex) {
       return;
     }
+    this._loading = true;
+    this.render();
     try {
       const response = await fetch(`/vex/vertex/${this._parentVex}/children/${sortBy}`);
       if (!response.ok) {
@@ -109,9 +112,11 @@ class VexList extends HTMLElement {
       }
       const children = await response.json();
       this._vexes = children;
+      this._loading = false;
       this.render();
     } catch (e) {
       this._vexes = [];
+      this._loading = false;
       this.render();
     }
   }
@@ -176,7 +181,6 @@ class VexList extends HTMLElement {
   }
 
   joinRoom (vexId) {
-    console.log('Joining room:', vexId);
     this._socket.emit('joinVexRoom', vexId);
   }
 
@@ -198,15 +202,49 @@ class VexList extends HTMLElement {
           display: block;
         }
         .vex-list {
-          /* display: flex; */
           flex-direction: column;
           gap: 8px;
+          overflow: scroll;
+          height: 100%;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .vex-list::-webkit-scrollbar {
+          display: none;
+        }
+        .loading-spinner {
+          width: 100%;
+          text-align: center;
+          color: #7d0585;
+          font-size: 1.2em;
+          margin: 1.5em 0;
+          letter-spacing: 2px;
+          min-height: 1.5em;
         }
       </style>
-      <div class="vex-list"></div>
-      <vex-sort-controls current-sort="${this._currentSort}"></vex-sort-controls>
+      <div class="vex-list">
+        <div class="loading-spinner" style="display:${this._loading ? 'block' : 'none'}"><span id="dots">.</span></div>
+      </div>
     `;
 
+    if (this._loading) {
+      // Animate the dots
+      const dots = this.shadowRoot.getElementById('dots');
+      let count = 1;
+      if (this._dotsInterval) {
+        clearInterval(this._dotsInterval);
+      }
+      this._dotsInterval = setInterval(() => {
+        count = (count % 3) + 1;
+        dots.textContent = '.'.repeat(count);
+      }, 250);
+      return;
+    } else {
+      if (this._dotsInterval) {
+        clearInterval(this._dotsInterval);
+        this._dotsInterval = null;
+      }
+    }
     const listDiv = this.shadowRoot.querySelector('.vex-list');
     this._vexes.forEach((vex) => {
       const vexDisplay = document.createElement('vex-display');
@@ -215,13 +253,6 @@ class VexList extends HTMLElement {
       vexDisplay.setAttribute('vex-id', vex._id);
       vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
       listDiv.appendChild(vexDisplay);
-    });
-
-    // Listen for sort changes
-    const sortControls = this.shadowRoot.querySelector('vex-sort-controls');
-    sortControls.addEventListener('sort-changed', (e) => {
-      this._currentSort = e.detail.sort;
-      this.fetchVexes(this._currentSort);
     });
   }
 
@@ -233,8 +264,17 @@ class VexList extends HTMLElement {
       this.viewMode = this.getAttribute('view-mode');
     }
     this.fetchVexes();
-    this.setupSocket();
     this.render();
+    this.setupSocket();
+  }
+
+  // Add a sortBy method for external sort controls
+  sortBy (sort) {
+    if (this._currentSort === sort) {
+      return;
+    }
+    this._currentSort = sort;
+    this.fetchVexes(sort);
   }
 
   addVex (vex) {
@@ -249,7 +289,12 @@ class VexList extends HTMLElement {
     vexDisplay.setAttribute('vex-id', vex._id);
     // Attach event listener directly to vex-display
     vexDisplay.addEventListener('vex-main-click', this._onClick.bind(this));
-    listDiv.prepend(vexDisplay);
+    listDiv.appendChild(vexDisplay);
+    // scroll to the bottom of the list
+    // scroll to the bottom of the list after next tick
+    setTimeout(() => {
+      listDiv.scrollTop = listDiv.scrollHeight;
+    });
   }
 }
 

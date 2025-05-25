@@ -59,7 +59,6 @@ class VexReactions extends HTMLElement {
 
   connectedCallback () {
     this.vexId = this.getAttribute('vex-id');
-    console.log('reactions', this.getAttribute('vex-reactions'));
     const reactionsFromAttribute = JSON.parse(this.getAttribute('vex-reactions') || '{}');
     this._reactions = {
       upvote: reactionsFromAttribute.upvote || [],

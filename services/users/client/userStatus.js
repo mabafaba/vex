@@ -63,7 +63,6 @@ class UserStatus extends HTMLElement {
   }
 
   async fetchUserData () {
-    console.log('fetchUserData called');
     try {
       const meEndpoint = this.getAttribute('me-endpoint') || '/user/me';
       const response = await fetch(meEndpoint, {
@@ -126,7 +125,6 @@ class UserStatus extends HTMLElement {
   }
 
   showLoginForm () {
-    console.log('showing login form');
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
     authPopup.style.display = 'flex';
   }
@@ -164,7 +162,6 @@ class UserStatus extends HTMLElement {
     // Listen for successful login events from the auth form
     const authForm = this.shadowRoot.querySelector('authentication-form');
     authForm?.addEventListener('login-success', async (e) => {
-      console.log('Login success event received', e.detail);
       this.hideLoginForm();
       await this.fetchUserData();
     });

@@ -93,36 +93,25 @@ const registerUser = async (req, res, next) => {
 };
 
 const loginUser = async (req, res, next) => {
-  console.log('loginUser', req.body);
   const { username, password } = req.body;
   // Check if username and password is provided
   if (!username || !password) {
-    console.log('loginUser: username or password not present');
     return res.status(400).json({
       message: 'Username or Password not present'
     });
   }
 
-  console.log('loginUser: username and password are present');
   try {
-    console.log('loginUser: User.findOne({ username })');
     const user = await User.findOne({ username });
-    console.log('loginUser: user', user);
-
     if (!user) {
-      console.log('loginUser: user not found');
       res.status(400).json({
         message: 'Login not successful',
         error: 'User not found'
       });
     } else {
-      console.log('loginUser: user found');
       // comparing given password with hashed password
-      console.log('loginUser: bcrypt.compare');
       bcrypt.compare(password, user.password).then(function (result) {
-        console.log('loginUser: bcrypt.compare result', result);
         if (result) {
-          console.log('loginUser: password is correct');
           const maxAge = 24 * 60 * 60;
           const token = jwt.sign(
             { id: user._id, username, role: user.role },
@@ -131,7 +120,6 @@ const loginUser = async (req, res, next) => {
               expiresIn: maxAge // 3hrs in sec
             }
           );
-          console.log('loginUser: jwt.sign result', token);
           res.cookie('jwt', token, {
             httpOnly: true,
             maxAge: maxAge * 1000 // 3hrs in ms
@@ -142,13 +130,11 @@ const loginUser = async (req, res, next) => {
             role: user.role
           });
         } else {
-          console.log('loginUser: password is incorrect');
           res.status(400).json({ message: 'Login not succesful' });
         }
       });
     }
   } catch (error) {
-    console.log('loginUser: error', error);
     res.status(400).json({
       message: 'An error occurred',
       error: error.message

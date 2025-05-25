@@ -52,7 +52,6 @@ vertexSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   // create a new reaction document if it doesn't exist
   if (!this.reactions) {
-    console.log('Creating new reaction document');
     const reaction = new Reaction();
     //save
     reaction.save()

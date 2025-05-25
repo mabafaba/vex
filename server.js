@@ -19,7 +19,7 @@ connectDB('vex')
 const port = 3005;
 const app = express();
 const server = require('http').createServer(app);
-console.log('Server created');
+
 const io = require('./services/utils/io')(server);
 // Initialize socket.io with more permissive CORS to fix connection issues
 
@@ -95,10 +95,7 @@ app.use('/vex/vertex', authenticate, authorize, vertexService.router);
 
 // on logout, end all socket interactions
 app.get('/vex/user/logout', authenticate, (req, res, next) => {
-  console.log('Logout request received, removing from sockets');
   if (!req.user) {
-    console.log('No user found, skipping socket disconnection');
-
     return next();
   }
   // Clear the JWT cookie
@@ -106,12 +103,7 @@ app.get('/vex/user/logout', authenticate, (req, res, next) => {
 
   // Disconnect all sockets for the user
   const sockets = io.sockets.sockets;
-  console.log('Sockets connected', sockets);
   sockets.forEach((socket) => {
-    console.log('Disconnecting socket', socket.id);
-    console.log('Socket user', socket.user.id);
-    console.log('Request user', req.user);
-
     if (socket.user && socket.user.id.toString() === req.user.id.toString()) {
       socket.disconnect(true);
     }
@@ -123,8 +115,6 @@ app.use('/vex/user', authenticate, authorize, userService.app);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('New client connected', socket.id, 'as user:', socket.user?.name);
-
   // Join a room for a specific vex thread
   socket.on('joinVexRoom', (vexId) => {
     // Only allow authenticated users to join rooms
@@ -134,27 +124,20 @@ io.on('connection', (socket) => {
       return;
     }
     socket.join(`vex-${vexId}`);
-    console.log(
-      `Client ${socket.id} (${socket.user.name}) joined room: vex-${vexId}`
-    );
   });
 
   // Leave a room when no longer viewing the thread
   socket.on('leaveVexRoom', (vexId) => {
     socket.leave(`vex-${vexId}`);
-    console.log(
-      `Client ${socket.id} (${socket.user?.name}) left room: vex-${vexId}`
-    );
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected', socket.id, 'user:', socket.user?.name);
+    // Handle disconnection
   });
 });
 
 server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
-  console.log(`Socket.io server listening on port ${port}`);
   if (liveReloadServer) {
     // Only trigger livereload refresh after server is ready
     liveReloadServer.refresh('/');

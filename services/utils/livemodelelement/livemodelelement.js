@@ -21,13 +21,15 @@ class LiveModelElement extends HTMLElement {
     this.endpoint = `${this.url}/${this.id}`;
 
     // Fetch initial data
+    // show seconds and milliseconds
+    const fetchStart = new Date().getSeconds() + ' ' + new Date().getMilliseconds();
+
     fetch(this.endpoint)
       .then(res => res.json())
       .then(doc => {
         this.live = doc;
         if (typeof this.render === 'function') {
-          console.log('data is here for', this.endpoint);
-          console.log(doc);
+          console.log('fetched at: ', fetchStart, 'rendered at:', new Date().getSeconds() + ' ' + new Date().getMilliseconds());
           this.render();
         }
       });
@@ -47,13 +49,14 @@ class LiveModelElement extends HTMLElement {
 
   _updateHandler () {
     // On update, re-fetch the data
-    console.log('LiveModelElement: updateHandler', this.endpoint);
     if (this.endpoint) {
+      console.log('fetching live model data at ms', new Date().getMilliseconds());
       fetch(this.endpoint)
         .then(res => res.json())
         .then(doc => {
           this.live = doc;
           if (typeof this.render === 'function') {
+            console.log('rendering live model data at ms', new Date().getMilliseconds());
             this.render();
           }
         });
