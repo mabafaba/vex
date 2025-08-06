@@ -29,7 +29,6 @@ class LiveModelElement extends HTMLElement {
       .then(doc => {
         this.live = doc;
         if (typeof this.render === 'function') {
-          console.log('fetched at: ', fetchStart, 'rendered at:', new Date().getSeconds() + ' ' + new Date().getMilliseconds());
           this.render();
         }
       });

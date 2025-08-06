@@ -21,15 +21,11 @@ class UserStatus extends HTMLElement {
     };
 
     this.t = translator({
-      en: { login: 'Login', logout: 'Logout', welcome: 'Welcome' },
-      es: {
-        login: 'Iniciar sesión',
-        logout: 'Cerrar sesión',
-        welcome: 'Bienvenido'
-      },
-      fr: { login: 'Connexion', logout: 'Déconnexion', welcome: 'Bienvenue' },
-      de: { login: 'Anmeldung', logout: 'Abmelden', welcome: 'Willkommen' },
-      pt: { login: 'Entrar', logout: 'Sair', welcome: 'Bem-vindo' }
+      en: { login: 'Login', logout: 'Logout' },
+      es: { login: 'Iniciar sesión', logout: 'Cerrar sesión' },
+      fr: { login: 'Connexion', logout: 'Déconnexion' },
+      de: { login: 'Anmeldung', logout: 'Abmelden' },
+      pt: { login: 'Entrar', logout: 'Sair' }
     });
 
     // Observe language changes and re-render
@@ -60,6 +56,11 @@ class UserStatus extends HTMLElement {
     await this.fetchUserData();
     this.render();
     this.addEventListeners();
+
+    // Auto-expand dialog if not logged in
+    if (!this.isLoggedIn) {
+      this.showLoginForm();
+    }
   }
 
   async fetchUserData () {
@@ -72,12 +73,19 @@ class UserStatus extends HTMLElement {
 
       if (response.status === 200) {
         this.user = await response.json();
-        // set global state.user variable
-        // check if 'state' object exists in document global scope
-
-        state.userid = this.user.id;
-        state.username = this.user.name;
+        // Initialize global state if it doesn't exist
+        if (typeof window.state === 'undefined') {
+          window.state = {};
+        }
+        window.state.userid = this.user.id;
+        window.state.username = this.user.name;
         this.isLoggedIn = true;
+        // Dispatch login success event when user data is fetched successfully
+        this.dispatchEvent(new CustomEvent('login-success', {
+          bubbles: true,
+          composed: true,
+          detail: { user: this.user }
+        }));
       } else {
         this.user = null;
         this.isLoggedIn = false;
@@ -126,38 +134,29 @@ class UserStatus extends HTMLElement {
 
   showLoginForm () {
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
-    authPopup.style.display = 'flex';
+    authPopup.classList.add('open');
   }
 
   hideLoginForm () {
     const authPopup = this.shadowRoot.querySelector('.auth-popup');
-    authPopup.style.display = 'none';
+    authPopup.classList.remove('open');
   }
 
   addEventListeners () {
-    // Add event listeners for login/logout buttons
-    if (this.isLoggedIn) {
-      this.shadowRoot
-        .querySelector('#logout-button')
-        ?.addEventListener('click', () => this.handleLogout());
-    } else {
-      this.shadowRoot
-        .querySelector('#login-button')
-        ?.addEventListener('click', () => this.showLoginForm());
-    }
+    // Add event listener for auth button
+    const authButton = this.shadowRoot.querySelector('.auth-button');
+    authButton?.addEventListener('click', () => {
+      if (this.isLoggedIn) {
+        this.handleLogout();
+      } else {
+        this.showLoginForm();
+      }
+    });
 
     // Add event listener for close button
     this.shadowRoot
       .querySelector('.auth-popup-close')
       ?.addEventListener('click', () => this.hideLoginForm());
-
-    // Close popup when clicking outside
-    const authPopup = this.shadowRoot.querySelector('.auth-popup');
-    authPopup?.addEventListener('click', (e) => {
-      if (e.target === authPopup) {
-        this.hideLoginForm();
-      }
-    });
 
     // Listen for successful login events from the auth form
     const authForm = this.shadowRoot.querySelector('authentication-form');
@@ -168,12 +167,12 @@ class UserStatus extends HTMLElement {
   }
 
   render () {
-    const loginTarget =
-      this.getAttribute('login-target') || window.location.href;
+    const loginTarget = this.getAttribute('login-target') || window.location.href;
     const loginEndpoint = this.getAttribute('login-endpoint');
     const registerEndpoint = this.getAttribute('register-endpoint');
 
     this.shadowRoot.innerHTML = `
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
       <style>
         :host {
           display: inline-block;
@@ -185,20 +184,27 @@ class UserStatus extends HTMLElement {
           gap: 10px;
         }
         
-        button {
-          padding: 6px 12px;
-          border-radius: 4px;
+        .auth-button {
+          background: #634E8F;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 36px;
+          height: 36px;
           cursor: pointer;
-          border: 1px solid #ccc;
-          background-color: #f8f8f8;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
-        button:hover {
-          background-color: #e8e8e8;
+        .auth-button:hover {
+          background: #7b62b3;
         }
         
-        .username {
-          font-weight: bold;
+        .auth-button i {
+          font-size: 16px;
         }
         
         /* Auth popup styles */
@@ -207,47 +213,55 @@ class UserStatus extends HTMLElement {
           top: 0;
           left: 0;
           width: 100%;
-          height: 100%;
+          height: 100vh;
           display: none;
-          justify-content: center;
-          align-items: center;
+          background-color: white;
           z-index: 1000;
         }
         
+        .auth-popup.open {
+          display: block;
+        }
+        
         .auth-popup-content {
-          position:absolute;
-          top:0;
-          right:0;
-          background-color: white;
-          padding: 20px;
-          border-radius: 5px;
           max-width: 500px;
           width: 90%;
+          margin: 40px auto;
+          padding: 20px;
         }
         
         .auth-popup-close {
-          float: right;
+          position: absolute;
+          top: 20px;
+          right: 20px;
           border: none;
           background: none;
-          font-size: 20px;
+          font-size: 24px;
           cursor: pointer;
+          color: #666;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          transition: background-color 0.2s;
+        }
+
+        .auth-popup-close:hover {
+          background-color: rgba(0,0,0,0.1);
         }
       </style>
       
       <div class="user-status">
-        ${
-  this.isLoggedIn
-    ? `<span>${this.t('welcome')}, <span class="username">${
-      this.user.name || this.user.username
-    }</span></span>
-           <button id="logout-button">${this.t('logout')}</button>`
-    : `<button id="login-button">${this.t('login')}</button>`
-}
+        <button class="auth-button" title="${this.isLoggedIn ? this.t('logout') : this.t('login')}">
+          <i class="fas ${this.isLoggedIn ? 'fa-sign-out-alt' : 'fa-sign-in-alt'}"></i>
+        </button>
       </div>
       
       <div class="auth-popup">
+        <button class="auth-popup-close">×</button>
         <div class="auth-popup-content">
-          <button class="auth-popup-close">×</button>
           <authentication-form 
             target-url="${loginTarget}"
             ${loginEndpoint ? `login-endpoint="${loginEndpoint}"` : ''}

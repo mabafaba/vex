@@ -157,12 +157,12 @@ class VexList extends HTMLElement {
         }
         if (on) {
           // Add userId if not present
-          if (!vex.userReactions[type].includes(state.userid)) {
-            vex.userReactions[type].push(state.userid);
+          if (!vex.userReactions[type].includes(window.state?.userid)) {
+            vex.userReactions[type].push(window.state?.userid);
           }
         } else {
           // Remove userId if present
-          vex.userReactions[type] = vex.userReactions[type].filter(id => id !== state.userid);
+          vex.userReactions[type] = vex.userReactions[type].filter(id => id !== window.state?.userid);
         }
         // Update the vex-reactions component for this vex
         const vexDisplay = this.shadowRoot.querySelector(`vex-display[vex-id='${vertexId}']`);
@@ -200,14 +200,17 @@ class VexList extends HTMLElement {
       <style>
         :host {
           display: block;
+          height: 100%;
         }
         .vex-list {
           flex-direction: column;
           gap: 8px;
-          overflow: scroll;
+          overflow-y: auto;
           height: 100%;
           scrollbar-width: none;
           -ms-overflow-style: none;
+          padding-top: 12px;
+          box-sizing: border-box;
         }
         .vex-list::-webkit-scrollbar {
           display: none;
@@ -221,6 +224,11 @@ class VexList extends HTMLElement {
           letter-spacing: 2px;
           min-height: 1.5em;
         }
+
+        vex-display {
+          display: block;
+        }
+
       </style>
       <div class="vex-list">
         <div class="loading-spinner" style="display:${this._loading ? 'block' : 'none'}"><span id="dots">.</span></div>

@@ -62,7 +62,8 @@ async function authenticate (req, res, next) {
   req.user = {
     id: userData._id,
     name: userData.username,
-    role: userData.role
+    role: userData.role,
+    data: userData.data
   };
 
   req.authenticated = true;

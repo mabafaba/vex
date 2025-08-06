@@ -1,9 +1,3 @@
-plan for this (not necessarily implemented:
-
-- scripts to download osm data from geofabrik, extract all administrative boundary relations and import to mongodb
-- endpoint to find all admin geometries intersecting with a given geojson
-- endpoint to find smallest admin unit containing a given point
-
 
 ### preparing the data
 
@@ -23,6 +17,12 @@ conda activate gdal-env
 ```
 ogr2ogr -f GeoJSON admin_boundaries.geojson germany-latest.osm.pbf multipolygons -where "boundary='administrative'"
 ```
+
+### Next
+Set the file path in services/administrativelevels/setup/initialize.js to the geojson file you created and run the script
+
+
+
 
 
 

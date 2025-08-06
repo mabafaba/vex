@@ -58,7 +58,6 @@ class reactionButtons extends LiveModelElement {
   }
 
   render () {
-    console.log('start rendering at', new Date().getMilliseconds());
     if (!this.live) {
       return;
     }
@@ -153,11 +152,9 @@ class reactionButtons extends LiveModelElement {
         this.toggleReaction(e.currentTarget.dataset.type);
       };
     });
-    console.log('end rendering at', new Date().getMilliseconds());
   }
 
   toggleReaction (type) {
-    console.log('toggle reaction', type, 'at', new Date().getMilliseconds());
     // Toggle the reaction in myReactions
     if (this.live.myReactions.includes(type)) {
       this.live.myReactions = this.live.myReactions.filter(t => t !== type);

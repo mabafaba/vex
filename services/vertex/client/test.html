@@ -24,6 +24,7 @@
     <script src="/vex/utils/livemodelelement/livemodelelement.js"></script>
     
     <script src="./vexcomponent.js"></script>
+    <script src="./stacked-buttons-ordinal-selection.js"></script>
     <script src="./vexinputcomponent.js"></script>
     <script src="./geoscaleinputcomponent.js"></script>
     <script src="./vexbreadcrumbs.js"></script>
@@ -33,10 +34,16 @@
     <script src="./sliding-page.js"></script>
     <script src="./vex-sliding-threads.js"></script>
     <script src="./ordinal-slider.js"></script>
+    
     <script src="./vexsortcontrols.js"></script>
     <script src="/vex/reactions/static/reactionbuttons.js"></script>
     <script src="/vex/user/static/authForm.js"></script>
     <script src="/vex/user/static/userstatus.js"></script>
+    <script src="/vex/administrative/static/leafletlocationpicker.js"></script>
+    <script src="/vex/user/static/locationpickerdialog.js"></script>
+    <!-- leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="http://localhost:35729/livereload.js?snipver=1"></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
@@ -51,7 +58,7 @@
       body {
         position: relative;
         font-family: Arial, sans-serif;
-        background: #defcfe;
+        /* background: #defcfe; */
         box-sizing: border-box;
         padding: 0px;
         display: flex;
@@ -65,6 +72,8 @@
         gap: 10px;
         flex: 1;
         min-height: 0; /* Important for flex child scrolling */
+        width: 90%;
+        margin: auto;
       }
 
       .square-list-container {
@@ -80,7 +89,7 @@
       .thread-container {
         flex: 1;
         min-width: 0;
-        overflow-y: auto;
+        overflow-y: hidden;
         overflow-x: hidden;
       }
 
@@ -163,6 +172,10 @@
       *::-webkit-scrollbar { 
         display: none;  /* Safari and Chrome */
       }
+
+      location-picker-dialog {
+        margin: 15px;
+      }
     </style>
   </head>
   <body>
@@ -211,8 +224,8 @@
       const urlParams = new URLSearchParams(window.location.search);
       let vexId = urlParams.get("id");
       if (!vexId) {
-        console.error("No vex id provided in the URL");
-        vexId = "682a12bb3f307bbbdd111053";
+        console.warn("No vex id provided in the URL");
+        vexId = "68480c756bc0d932d2deb374";
       }
 
       // Set parent-vex on the square list
@@ -260,11 +273,78 @@
 
       const state = reactive();
 
+      // Function to reload the main thread
+      function reloadMainThread() {
+        const slidingThreads = document.getElementById('main-sliding-threads');
+        const currentVexId = slidingThreads.getAttribute('vex-id');
+        // Re-set the vex-id to force a refresh
+        slidingThreads.setAttribute('vex-id', '');
+        setTimeout(() => {
+          slidingThreads.setAttribute('vex-id', currentVexId);
+        }, 0);
+      }
+
       // login-success event on user-status should reload the page
       document.addEventListener("login-success", () => {
-        location.reload();
+        reloadMainThread();
       });
 
+      // logout event should also reload the thread
+      document.addEventListener("user-logout", () => {
+        reloadMainThread();
+      });
+
+      // Check for user location data after successful login
+      document.addEventListener("login-success", async () => {
+        try {
+          const response = await fetch('/vex/user/me', {
+            credentials: 'include'
+          });
+          const userData = await response.json();
+          
+          // Create location picker if it doesn't exist
+          if (!document.querySelector('location-picker-dialog')) {
+            const dialog = document.createElement('location-picker-dialog');
+            document.querySelector('.user-status-container').appendChild(dialog);
+          }
+        } catch (error) {
+          console.error('Error checking user location data:', error);
+        }
+      });
+
+      // Also check on page load if user is already logged in
+      window.addEventListener('DOMContentLoaded', async () => {
+        try {
+          const response = await fetch('/vex/user/me', {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            console.log('user logged in');
+            const userData = await response.json();
+            // Create location picker if it doesn't exist
+            if (!document.querySelector('location-picker-dialog')) {
+              const dialog = document.createElement('location-picker-dialog');
+              document.querySelector('.user-status-container').appendChild(dialog);
+              
+              // Add event listener for location-saved event
+              dialog.addEventListener('location-saved', () => {
+                // Refresh the main thread by triggering a re-render
+                const slidingThreads = document.getElementById('main-sliding-threads');
+                const currentVexId = slidingThreads.getAttribute('vex-id');
+                // Re-set the vex-id to force a refresh
+                slidingThreads.setAttribute('vex-id', '');
+                setTimeout(() => {
+                  slidingThreads.setAttribute('vex-id', currentVexId);
+                }, 0);
+              });
+            }
+          } else {
+            console.log('user not logged in');
+          }
+        } catch (error) {
+          console.error('Error checking user location data:', error);
+        }
+      });
 
       // swipepageanimation.js
 

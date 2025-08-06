@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@casl/ability": "^6.7.3",
+    "@turf/turf": "^7.2.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",

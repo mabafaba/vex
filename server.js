@@ -25,7 +25,8 @@ const io = require('./services/utils/io')(server);
 
 const reactionsService = require('./services/reactions');
 const vertexService = require('./services/vertex');
-const geodataService = require('./services/geodata');
+
+const administrativeLevelsService = require('./services/administrativelevels').router;
 
 const { authorize, authenticate } = require('./authorizations');
 
@@ -85,6 +86,9 @@ app.use(connectLivereload());
 
 // Serve static files from utils directory
 app.use('/vex/utils', express.static('services/utils'));
+
+// Serve administrative levels service
+app.use('/vex/administrative', administrativeLevelsService);
 
 // Serve livemodelelement directory as static for client-side imports
 app.use('/vex/services/livemodelelement', express.static(__dirname + '/services/livemodelelement'));

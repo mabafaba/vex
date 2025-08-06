@@ -38,6 +38,11 @@ const vertexSchema = new mongoose.Schema({
     ref: 'Reaction',
     required: true
   },
+  locations: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AdministrativeBoundary',
+    required: false
+  }],
   createdAt: {
     type: Date,
     default: Date.now

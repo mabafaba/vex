@@ -80,6 +80,13 @@ const routes = [
     notLoggedIn: send401
   },
   {
+    method: 'PATCH',
+    path: '/vex/user/me',
+    condition: isAuthenticated,
+    notAuthorized: send403,
+    notLoggedIn: send401
+  },
+  {
     method: 'GET',
     path: '/vex/user/all',
     condition: isAdmin,

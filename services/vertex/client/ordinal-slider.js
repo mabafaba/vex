@@ -3,11 +3,12 @@ class OrdinalSlider extends HTMLElement {
     super();
     this.attachShadow({ mode: 'open' });
     this._labels = [];
+    this._values = [];
     this._isDragging = false;
   }
 
   static get observedAttributes () {
-    return ['value', 'labels'];
+    return ['value', 'labels', 'values'];
   }
 
   attributeChangedCallback (name, oldValue, newValue) {
@@ -22,6 +23,8 @@ class OrdinalSlider extends HTMLElement {
     case 'labels':
       this._labels = JSON.parse(newValue || '[]');
       break;
+    case 'values':
+      this._values = JSON.parse(newValue || '[]');
     }
     this.render();
   }
@@ -35,7 +38,7 @@ class OrdinalSlider extends HTMLElement {
   }
 
   set value (newValue) {
-    if (this._labels.includes(newValue)) {
+    if (this._values.includes(newValue)) {
       this._value = newValue;
       this.setAttribute('value', newValue);
       this.render();
@@ -43,7 +46,10 @@ class OrdinalSlider extends HTMLElement {
   }
 
   render () {
-    const currentIndex = this._labels.indexOf(this._value);
+    // Use values array if available, otherwise fallback to labels
+    const currentIndex = this._values.length > 0 ?
+      this._values.indexOf(this._value) :
+      this._labels.indexOf(this._value);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -108,18 +114,18 @@ class OrdinalSlider extends HTMLElement {
         .label-container {
           display: flex;
           justify-content: space-between;
-          padding: 0 8px; /* Match slider-wrapper padding */
-          margin-top: 4px; /* Space above labels */
+          padding: 0 8px;
+          margin-top: 4px;
         }
         .label-text {
           font-size: 10px;
-          color: #888888; /* Gray text */
+          color: #888888;
           text-align: center;
-          flex: 1; /* Distribute space */
-          min-width: 0; /* Prevent flex items from overflowing */
-          white-space: nowrap; /* Prevent wrapping */
-          overflow: hidden; /* Hide overflow */
-          text-overflow: ellipsis; /* Add ellipsis for overflow */
+          flex: 1;
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .label-text:first-child {
           text-align: left;
@@ -173,7 +179,7 @@ class OrdinalSlider extends HTMLElement {
        </style>
        <div class="slider-container">
          <div class="tooltip">
-           <span class="tooltip-text">${this._value}</span>
+           <span class="tooltip-text">${this._labels[currentIndex]}</span>
          </div>
          <div class="slider-wrapper">
           <div class="position-markers"></div>
@@ -193,7 +199,7 @@ class OrdinalSlider extends HTMLElement {
     const markerContainer = this.shadowRoot.querySelector('.position-markers');
     if (markerContainer && this._labels.length > 1) {
       this._labels.forEach((label, index) => {
-        if (index !== currentIndex) { 
+        if (index !== currentIndex) {
           const marker = document.createElement('div');
           marker.classList.add('marker');
           const positionPercentage = (index / (this._labels.length - 1)) * 100;
@@ -219,34 +225,43 @@ class OrdinalSlider extends HTMLElement {
 
     input.addEventListener('mousedown', () => {
       this._isDragging = true;
-      startIndex = this._labels.indexOf(this._value); 
+      startIndex = this._values.length > 0 ?
+        this._values.indexOf(this._value) :
+        this._labels.indexOf(this._value);
       this.updateTooltip();
     });
 
     input.addEventListener('mouseup', () => {
       this._isDragging = false;
-      const currentValIndex = this._labels.indexOf(this._value); 
+      const currentValIndex = this._values.length > 0 ?
+        this._values.indexOf(this._value) :
+        this._labels.indexOf(this._value);
       const newIndex = Math.round(parseFloat(input.value));
       if (newIndex !== currentValIndex) {
-        this.value = this._labels[newIndex];
+        const newValue = this._values.length > 0 ? this._values[newIndex] : this._labels[newIndex];
+        this.value = newValue;
         this.dispatchEvent(new CustomEvent('change', {
-          detail: { value: this._value }
+          detail: {
+            value: newValue,
+            label: this._labels[newIndex]
+          }
         }));
       } else {
-        // Snap back to original value if not moved far enough
         input.value = currentValIndex;
       }
-      this.updateTooltip(); 
+      this.updateTooltip();
     });
 
     input.addEventListener('input', (e) => {
       const newIndex = parseFloat(e.target.value);
       if (this._isDragging) {
-        const newValue = this._labels[Math.round(newIndex)];
+        const newValue = this._values.length > 0 ? this._values[Math.round(newIndex)] : this._labels[Math.round(newIndex)];
         this.updateTooltip(newValue);
-        // Dispatch input event with the current value
         this.dispatchEvent(new CustomEvent('input', {
-          detail: { value: newValue }
+          detail: {
+            value: newValue,
+            label: this._labels[Math.round(newIndex)]
+          }
         }));
       }
     });
@@ -259,17 +274,21 @@ class OrdinalSlider extends HTMLElement {
       return;
     }
 
-    const index = this._labels.indexOf(value);
+    const index = this._values.length > 0 ?
+      this._values.indexOf(value) :
+      this._labels.indexOf(value);
     const positionPercentage = (index / (this._labels.length - 1)) * 100;
 
     tooltip.style.left = `${positionPercentage}%`;
     tooltip.style.opacity = this._isDragging ? '1' : '0';
-    tooltipText.textContent = value;
+    tooltipText.textContent = this._labels[index];
 
-    // Dispatch input event during dragging to update external displays
     if (this._isDragging) {
       this.dispatchEvent(new CustomEvent('input', {
-        detail: { value }
+        detail: {
+          value: value,
+          label: this._labels[index]
+        }
       }));
     }
   }

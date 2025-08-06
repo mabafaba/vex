@@ -6,134 +6,178 @@ class VexInputComponent extends HTMLElement {
     this.shadowRoot.innerHTML = `
             <style>
                 .vex-container {
-                    display: flex;
-                    background-color: #EFDAFFAB;  
-                    flex-direction: column;
-                    margin: 0 auto;
-                    box-sizing: border-box;
-                    /* border: 1px solid #ccc;  */
-                    border-radius: 0px;
+                    background-color: #EFDAFFAB;
                     padding: 12px;
+                    border-radius: 12px;
                 }
                 .input-row {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                 }
                 input {
-                    width: 100%;
+                    flex: 1;
                     background-color: #fff;
-                    padding: 8px 4px;
+                    padding: 8px 12px;
                     font-size: 16px;
                     border: 1px dotted #ccc;
                     border-radius: 15px;
                     outline: none;
-                    /* background-color: transparent; */
-                    box-sizing: border-box;
                 }
-                .reach-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    height: 50px;
-                    transition: all 0.2s ease;
-                }
-                button {
-                    min-width: 36px;
+                .send-button {
+                    width: 36px;
                     height: 36px;
-                    font-size: 16px;
                     border: none;
                     border-radius: 50%;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    flex-shrink: 0;
                     background-color: #7d0585;
                     color: white;
+                    transition: all 0.2s ease;
                 }
-                button:hover {
+                .send-button:hover {
                     background-color: #5d0363;
+                    transform: scale(1.05);
                 }
-                .hidden {
+                .send-button.hidden {
                     opacity: 0;
-                    height: 0;
-                    margin-top: 0;
-                    margin-bottom: 0;
-                    padding-top: 0;
-                    padding-bottom: 0;
-                    transition: 
-                    visibility: hidden;
+                    width: 0;
+                    margin: 0;
+                    padding: 0;
                     pointer-events: none;
                 }
-
-                .reach-value {
-                    color: #7d0585;
-                    font-weight: 500;
-                    width: 50%;
-                    text-align: right;
+                .reach-row {
+                    margin-top: 12px;
+                    transition: all 0.3s ease;
+                    opacity: 1;
+                    visibility: visible;
                 }
-                ordinal-slider {
-                    width: 50%;
-                    transition: all 0.2s ease;
+                .reach-row.hidden {
+                    margin-top: 0;
+                    opacity: 0;
+                    visibility: hidden;
+                    height: 0;
                 }
             </style>
             <div class="vex-container">
                 <div class="input-row">
                     <input type="text" id="vexContent" placeholder="Write your message...">
+                    <button class="send-button" id="initialSendButton">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/>
+                        </svg>
+                    </button>
                 </div>
                 <div class="reach-row hidden" id="reachRow">
-                    <ordinal-slider
-                        id="reachSlider"
-                        value="City"
-                        labels='["Local Action Group","Neighbourhood", "City","Country", "Global"]'
-                    ></ordinal-slider>
-                    <span class="reach-value" id="reachValue">City</span>
-                    <button id="sendButton">→</button>
+                    <stacked-buttons-ordinal-selection
+                        id="reachSelector"
+                        value=""
+                        values='[]'
+                        labels='[]'
+                    ></stacked-buttons-ordinal-selection>
                 </div>
             </div>
         `;
 
-    this.shadowRoot
-      .querySelector('#sendButton')
-      .addEventListener('click', () => this.sendVex());
-    // Add event listener for Enter key
-    this.shadowRoot
-      .querySelector('#vexContent')
-      .addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          this.sendVex();
-        }
-      });
-  }
-
-  connectedCallback () {
-    // get parent-vex from attribute, or if not set, set to empty array
-    this.parents = [this.getAttribute('parent-vex')] || [];
-
-    // Listen for changes in the reach slider
-    const reachSlider = this.shadowRoot.querySelector('#reachSlider');
-    const reachValue = this.shadowRoot.querySelector('#reachValue');
-    const reachRow = this.shadowRoot.querySelector('#reachRow');
-    const input = this.shadowRoot.querySelector('#vexContent');
-
-    // Update on both change and input events
-    reachSlider.addEventListener('change', (e) => {
-      reachValue.textContent = e.detail.value;
-    });
-
-    reachSlider.addEventListener('input', (e) => {
-      if (e.detail && e.detail.value) {
-        reachValue.textContent = e.detail.value;
+    // Add click outside listener
+    document.addEventListener('click', (e) => {
+      if (!this.shadowRoot.host.contains(e.target)) {
+        this.hideReachSelector();
+        this.showInitialSendButton();
       }
     });
 
-    // Show reach controls when input is focused
-    input.addEventListener('focus', () => {
-      reachRow.classList.remove('hidden');
+    // Prevent clicks inside from triggering the outside click handler
+    this.shadowRoot.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
 
-    // No blur handler needed - controls stay visible once shown
+    // Add click handler for initial send button
+    const initialSendButton = this.shadowRoot.querySelector('#initialSendButton');
+    initialSendButton.addEventListener('click', () => {
+      const content = this.shadowRoot.querySelector('#vexContent').value.trim();
+      if (!content) {
+        alert('Please write a message first');
+        return;
+      }
+      this.showReachSelector();
+      this.hideInitialSendButton();
+    });
+
+    // Add enter key handler
+    this.shadowRoot.querySelector('#vexContent').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const content = this.shadowRoot.querySelector('#vexContent').value.trim();
+        if (!content) {
+          alert('Please write a message first');
+          return;
+        }
+        if (this.isReachSelectorVisible()) {
+          this.sendVex();
+        } else {
+          this.showReachSelector();
+          this.hideInitialSendButton();
+        }
+      }
+    });
+  }
+
+  hideInitialSendButton () {
+    const sendButton = this.shadowRoot.querySelector('#initialSendButton');
+    sendButton.classList.add('hidden');
+  }
+
+  showInitialSendButton () {
+    const sendButton = this.shadowRoot.querySelector('#initialSendButton');
+    sendButton.classList.remove('hidden');
+  }
+
+  isReachSelectorVisible () {
+    return !this.shadowRoot.querySelector('#reachRow').classList.contains('hidden');
+  }
+
+  showReachSelector () {
+    const reachRow = this.shadowRoot.querySelector('#reachRow');
+    reachRow.classList.remove('hidden');
+  }
+
+  hideReachSelector () {
+    const reachRow = this.shadowRoot.querySelector('#reachRow');
+    reachRow.classList.add('hidden');
+  }
+
+  async connectedCallback () {
+    this.parents = [this.getAttribute('parent-vex')] || [];
+
+    const reachSelector = this.shadowRoot.querySelector('#reachSelector');
+    const input = this.shadowRoot.querySelector('#vexContent');
+
+    const userData = await fetch('/vex/user/me');
+    const user = await userData.json();
+    const reachValues = user.data.administrativeBoundaries.map(boundary => boundary._id);
+    const reachLabels = user.data.administrativeBoundaries.map(boundary => boundary.properties.name);
+    const selectedValue = reachValues[reachValues.length - 1];
+
+    this.setOrdinalSelectorValues(reachValues, reachLabels, selectedValue);
+
+    reachSelector.addEventListener('change', (e) => {
+      reachSelector.setAttribute('value', e.detail.value);
+    });
+
+    reachSelector.addEventListener('send', () => {
+      this.sendVex();
+      this.hideReachSelector();
+      this.showInitialSendButton();
+    });
+  }
+
+  setOrdinalSelectorValues (values, labels, value) {
+    const selector = this.shadowRoot.querySelector('#reachSelector');
+    selector.setAttribute('values', JSON.stringify(values));
+    selector.setAttribute('labels', JSON.stringify(labels));
+    selector.setAttribute('value', value);
   }
 
   // listen for changes in the parent-vex attribute
@@ -153,8 +197,17 @@ class VexInputComponent extends HTMLElement {
       return;
     }
 
-    const reachSlider = this.shadowRoot.querySelector('#reachSlider');
-    const reach = reachSlider.value.toLowerCase();
+    const reachSelector = this.shadowRoot.querySelector('#reachSelector');
+    const selectedReach = reachSelector.value;
+    if (!selectedReach) {
+      alert('Please select a reach level');
+      return;
+    }
+
+    // Get all locations at and below the selected level
+    const reachValues = JSON.parse(reachSelector.getAttribute('values'));
+    const selectedIndex = reachValues.indexOf(selectedReach);
+    const selectedLocations = reachValues.slice(selectedIndex);
 
     try {
       const response = await fetch('/vex/vertex', {
@@ -165,7 +218,7 @@ class VexInputComponent extends HTMLElement {
         body: JSON.stringify({
           content,
           parents: this.parents,
-          reach
+          locations: selectedLocations
         })
       });
 
@@ -176,6 +229,8 @@ class VexInputComponent extends HTMLElement {
 
       const result = await response.json();
       this.shadowRoot.querySelector('#vexContent').value = '';
+      this.hideReachSelector();
+      this.showInitialSendButton();
     } catch (error) {
       alert(`Error: ${error.message}`);
     }

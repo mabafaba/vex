@@ -1,4 +1,3 @@
-
 class VexComponent extends HTMLElement {
   constructor () {
     super();
@@ -61,12 +60,14 @@ class VexComponent extends HTMLElement {
                     padding: 10px;
                     cursor: pointer;
                     transition: all 0.3s ease-in-out;
+                    position: relative;
                 }
                 .vex.thread > .vex-main {
                     background-color:rgb(99, 78, 143);
                     color: #FFF;
                     border-bottom-right-radius: 11px;
                     border-bottom-left-radius: 11px;
+                    /* border-radius: 11px; */
                     margin-bottom: -12px;
                     z-index:1;
                     position: relative;
@@ -169,6 +170,8 @@ class VexComponent extends HTMLElement {
                     pointer-events: none;
                     opacity: 0;
                     transition: height 1s, opacity 1s;
+                    border-top-right-radius: 11px;
+                    border-top-left-radius: 11px;
                 }
 
                 .vex.breadcrumb > .vex-main {
@@ -254,6 +257,11 @@ class VexComponent extends HTMLElement {
                     color: #666;
                     font-size: 0.8em;
                     margin-bottom: 5px;
+                }
+                .timestamp {
+                    color: #888;
+                    font-size: 0.7em;
+                    margin-left: 8px;
                 }
                 .square {
                     width: 70px;
@@ -374,19 +382,43 @@ class VexComponent extends HTMLElement {
                   box-sizing: border-box;
                 }
 
+                .location-name {
+                    position: absolute;
+                    top: 8px;
+                    right: 8px;
+                    font-size: 0.65em;
+                    color: #666;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    max-width: 60%;
+                    word-wrap: break-word;
+                    line-height: 1.2;
+                    text-align: right;
+                }
+
+                .vex.thread .location-name {
+                    color: #fff;
+                    max-width: 70%;
+                }
+                .vex.thread .location-name span {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+
             </style>
             <div class="vex">
                 <div class="vex-main">
-                    ${vex.createdBy ? `<div class="user-name">${vex.createdBy.username}</div>` : ''}
+                    ${vex.createdBy ? `<div class="user-name">
+                        ${vex.createdBy.username}
+                        <span class="timestamp">${this.formatTimestamp(vex.createdAt)}</span>
+                    </div>` : ''}
+                    ${vex.locations && vex.locations.length > 0 ?
+    `<div class="location-name">${vex.locations.map((loc, i, arr) =>
+      i === 0 ? `<strong>${loc.properties.name}</strong>` : `<span style="color: #999">${loc.properties.name}</span>`
+    ).reverse().join(' > ')}</div>`
+    : ''}
                     <div id="vex-content">${vex.content}</div>
-                    <reaction-buttons user-id="${state && state.userid}"></reaction-buttons>
-                    <!-- <vex-reactions-slider
-                      vex-id="${vex._id}"
-                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reaction-slider>
-                </div> -->
-                 <!-- <vex-reactions
-                      vex-id="${vex._id}"
-                      vex-reactions='${JSON.stringify(vex.userReactions)}'></vex-reactions>  -->
+                    <reaction-buttons user-id="${this.state.userid}"></reaction-buttons>
+                </div>
             </div>
         `;
 
@@ -488,6 +520,28 @@ class VexComponent extends HTMLElement {
     }
     vexDiv.classList.remove('collapsed', 'thread', 'normal', 'breadcrumb', 'square', 'activesquare', 'hidden');
     vexDiv.classList.add(to);
+  }
+
+  formatTimestamp (dateStr) {
+    if (!dateStr) {
+      return '';
+    }
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) {
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } else {
+      return date.toLocaleDateString('en-US', {
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
+    }
   }
 }
 

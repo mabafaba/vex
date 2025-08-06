@@ -40,8 +40,9 @@ class VexThread extends HTMLElement {
           flex: 0 0 auto;
           margin-bottom: 0em;
           padding: 0.5em;
-          background: rgb(99, 78, 143)
-                
+          background: rgb(99, 78, 143);
+          border-top-left-radius: 11px;
+          border-top-right-radius: 11px;
         }
         #main-vex {
           flex: 0 0 auto;
