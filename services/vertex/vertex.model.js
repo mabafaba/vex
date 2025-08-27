@@ -88,7 +88,7 @@ Vertex.findOne({}).then( async (vertex) => {
       reactions: reactions._id
     });
     await initialVertex.save();
-    console.log('Initial vertex created:', initialVertex);
+    // Initial vertex created successfully
   }
 });
 

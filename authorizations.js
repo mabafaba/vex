@@ -139,6 +139,13 @@ const routes = [
   },
   {
     method: 'GET',
+    path: '/vex/vertex/initial',
+    condition: anyone,
+    notAuthorized: pass,
+    notLoggedIn: pass
+  },
+  {
+    method: 'GET',
     path: '/vex/vertex/[A-Za-z0-9]+',
     condition: isAuthenticated,
     notAuthorized: send403,

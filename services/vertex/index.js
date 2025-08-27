@@ -117,6 +117,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get the initial vertex (first vertex created, typically "hello world")
+router.get('/initial', async (req, res) => {
+  try {
+    const initialVertex = await Vertex.findOne().sort({ createdAt: 1 });
+    if (!initialVertex) {
+      return res.status(404).json({ error: 'No initial vertex found' });
+    }
+    res.status(200).json({ id: initialVertex._id });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get a single vertex by ID
 router.get('/:id', async (req, res) => {
   try {

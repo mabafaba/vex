@@ -108,7 +108,9 @@ class VexBreadcrumbs extends HTMLElement {
 
                 .breadcrumbs-container {
                   min-height: 27px;
-                  max-width: 100%;
+                  width: 100%;
+                  /* padding: 0.5em; */
+                  display: block;
                   overflow: hidden;
                   width:100%;
                 }

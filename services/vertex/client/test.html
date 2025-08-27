@@ -47,6 +47,9 @@
     <script src="http://localhost:35729/livereload.js?snipver=1"></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <!-- Main application entry point -->
+    <script src="./app.js"></script>
+
 
     <style>
       html, body {
@@ -91,6 +94,10 @@
         min-width: 0;
         overflow-y: hidden;
         overflow-x: hidden;
+      }
+
+      user-status {
+        margin: 15px;
       }
 
       .user-status-container {
@@ -175,6 +182,7 @@
 
       location-picker-dialog {
         margin: 15px;
+        margin-left: 0px;
       }
     </style>
   </head>
@@ -202,219 +210,6 @@
         Socket.io: <span id="socket-status">Checking...</span>
     </div> -->
 
-    <script>
-      const socket = io("http://localhost:3005", {
-        transports: ["websocket"],
-        autoConnect: false,
-      })
-      socket.connect();
-      socket.on("connect", () => {
-        console.log("Socket connected");
-        // document.getElementById("socket-status").innerText = "Connected";
-      });
-      VexList.socket = socket;
-      LiveModelElement.socket = VexList.socket;
-      
-      const mainContainer = document.querySelector(".main-container");
-      mainContainer.innerHTML =`
-  <div class="thread-container">
-    <vex-thread id="main-sliding-threads"></vex-thread>
-  </div>`;
 
-      const urlParams = new URLSearchParams(window.location.search);
-      let vexId = urlParams.get("id");
-      if (!vexId) {
-        console.warn("No vex id provided in the URL");
-        vexId = "6898a5960723783a9ef8ca71";
-      }
-
-      // Set parent-vex on the square list
-      // const squareList = document.getElementById("square-list");
-      // squareList.setAttribute("parent-vex", vexId);
-
-      // Set initial vex-id on the sliding threads
-      const slidingThreads = document.getElementById("main-sliding-threads");
-      slidingThreads.setAttribute("vex-id", vexId);
-      
-      // vex-main-click listener
-      slidingThreads.addEventListener("vex-main-click", (e) => {
-        // do nothing if the vex is already open
-        if (slidingThreads.getAttribute("vex-id") === e.detail.vexId) {
-          return;
-        }
-        const vexId = e.detail.vexId;
-        // Set the vex-id on the sliding threads
-        slidingThreads.setAttribute("vex-id", vexId);
-        slideNext(mainContainer, 300, () => {
-          
-        });
-
-      });
-
-      // breadcrumb-click listener
-      slidingThreads.addEventListener("breadcrumb-click", (e) => {
-        console.log("Breadcrumb clicked:", e.detail);
-        const vexId = e.detail.vexId;
-        // Set the vex-id on the sliding threads
-        slidePrev(slidingThreads, 400, () => {
-          slidingThreads.setAttribute("vex-id", vexId);
-        });
-      });
-
-      // squareList.onClick = function(vex){
-      //   squareList.shadowRoot.querySelectorAll('vex-display').forEach(el => {
-      //     el.setAttribute('view-mode','square');
-      //   });
-      //   const clickedVex = squareList.shadowRoot.querySelector(`vex-display[vex-id="${vex.detail.vexId}"]`);
-      //   if (clickedVex) clickedVex.setAttribute('view-mode','activesquare');
-      //   // Do NOT set vex-id on slidingThreads or create a new thread here;
-      //   // this is now handled inside vex-sliding-threads when a vex-list is clicked inside a thread page.
-      // }
-
-      const state = reactive();
-
-      // Function to reload the main thread
-      function reloadMainThread() {
-        const slidingThreads = document.getElementById('main-sliding-threads');
-        const currentVexId = slidingThreads.getAttribute('vex-id');
-        // Re-set the vex-id to force a refresh
-        slidingThreads.setAttribute('vex-id', '');
-        setTimeout(() => {
-          slidingThreads.setAttribute('vex-id', currentVexId);
-        }, 0);
-      }
-
-      // login-success event on user-status should reload the page
-      document.addEventListener("login-success", () => {
-        reloadMainThread();
-      });
-
-      // logout event should also reload the thread
-      document.addEventListener("user-logout", () => {
-        reloadMainThread();
-      });
-
-      // Check for user location data after successful login
-      document.addEventListener("login-success", async () => {
-        try {
-          const response = await fetch('/vex/user/me', {
-            credentials: 'include'
-          });
-          const userData = await response.json();
-          
-          // Create location picker if it doesn't exist
-          if (!document.querySelector('location-picker-dialog')) {
-            const dialog = document.createElement('location-picker-dialog');
-            document.querySelector('.user-status-container').appendChild(dialog);
-          }
-        } catch (error) {
-          console.error('Error checking user location data:', error);
-        }
-      });
-
-      // Also check on page load if user is already logged in
-      window.addEventListener('DOMContentLoaded', async () => {
-        try {
-          const response = await fetch('/vex/user/me', {
-            credentials: 'include'
-          });
-          if (response.ok) {
-            console.log('user logged in');
-            const userData = await response.json();
-            // Create location picker if it doesn't exist
-            if (!document.querySelector('location-picker-dialog')) {
-              const dialog = document.createElement('location-picker-dialog');
-              document.querySelector('.user-status-container').appendChild(dialog);
-              
-              // Add event listener for location-saved event
-              dialog.addEventListener('location-saved', () => {
-                // Refresh the main thread by triggering a re-render
-                const slidingThreads = document.getElementById('main-sliding-threads');
-                const currentVexId = slidingThreads.getAttribute('vex-id');
-                // Re-set the vex-id to force a refresh
-                slidingThreads.setAttribute('vex-id', '');
-                setTimeout(() => {
-                  slidingThreads.setAttribute('vex-id', currentVexId);
-                }, 0);
-              });
-            }
-          } else {
-            console.log('user not logged in');
-          }
-        } catch (error) {
-          console.error('Error checking user location data:', error);
-        }
-      });
-
-      // swipepageanimation.js
-
-/**
- * Slides the content of a container out to the left, then brings it back in from the right.
- * @param {HTMLElement} container - The container whose content will be animated.
- * @param {number} duration - Animation duration in ms.
- * @returns {Promise<void>}
- */
- function slideNext (container, duration = 400, onAway = () => {}, onFinish = () => {}) {
-  return new Promise((resolve) => {
-    container.style.transition = `transform ${duration / 2}ms ease`;
-    container.style.transform = 'translateX(-100%)';
-
-    setTimeout(() => {
-      onAway();
-      container.style.transition = 'none';
-      container.style.transform = 'translateX(100%)';
-
-      // Force reflow to apply the transform immediately
-      void container.offsetWidth;
-
-      container.style.transition = `transform ${duration / 2}ms ease`;
-      container.style.transform = 'translateX(0)';
-
-      setTimeout(() => {
-        container.style.transition = '';
-        onFinish();
-        resolve();
-      }, duration / 2);
-    }, duration / 2);
-  });
-}
-
-/**
- * Slides the content of a container out to the right, then brings it back in from the left.
- * @param {HTMLElement} container - The container whose content will be animated.
- * @param {number} duration - Animation duration in ms.
- * @returns {Promise<void>}
- */
- function slidePrev (container, duration = 400, onAway = () => {}, onFinish = () => {}) {
-  
-  return new Promise((resolve) => {
-    container.style.transition = `transform ${duration / 2}ms ease`;
-    container.style.transform = 'translateX(100%)';
-
-    setTimeout(() => {
-      onAway();
-      container.style.transition = 'none';
-      container.style.transform = 'translateX(-100%)';
-
-      // Force reflow to apply the transform immediately
-      void container.offsetWidth;
-
-      container.style.transition = `transform ${duration / 2}ms ease`;
-      container.style.transform = 'translateX(0)';
-
-      setTimeout(() => {
-        onFinish();
-        container.style.transition = '';
-        resolve();
-      }, duration / 2);
-    }, duration / 2);
-  });
-}
-
-
-
-      
-
-    </script>
   </body>
 </html>
