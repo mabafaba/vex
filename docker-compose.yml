@@ -7,7 +7,7 @@ services:
     container_name: vex-web
     ports:
     # 3000:3000
-      - "7310:3000"
+      - "7310:3005"
     environment:
       - DOCKER=true
       - JWT_SECRET_FILE=/run/secrets/jwt_secret
