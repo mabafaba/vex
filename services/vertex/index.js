@@ -51,6 +51,7 @@ router.post('/', async (req, res) => {
           for (const socketId of room) {
             const socket = io.sockets.sockets.get(socketId);
             if (socket && socket.user) {
+              console.log('sending newChild to socket', socketId);
               // Only send the new vex ID
               socket.emit('newChild', {
                 parentId: parent._id,

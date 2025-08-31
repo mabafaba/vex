@@ -39,7 +39,7 @@
     }
 
     // Connect to socket server
-    this.socket = io(window.location.hostname + ':3005', {
+    this.socket = io({
       transports: ['websocket', 'polling'],
       auth: {
         token: token

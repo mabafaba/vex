@@ -12,7 +12,7 @@ function io (server) {
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization']
       },
-      path: '/socket.io', // Make sure path matches client expectations
+      path: '/vex-socket-io', // Make sure path matches client expectations
       transports: ['websocket', 'polling'] // Support multiple transport methods
     });
     return ioInstance;

@@ -181,10 +181,12 @@ class VexList extends HTMLElement {
   }
 
   joinRoom (vexId) {
+    console.log('joining room', vexId);
     this._socket.emit('joinVexRoom', vexId);
   }
 
   leaveRoom (vexId) {
+    console.log('leaving room', vexId);
     this._socket.emit('leaveVexRoom', vexId);
   }
 

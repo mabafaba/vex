@@ -1,9 +1,10 @@
 // app.js - Main client-side entry point for VEX application
 
 // Socket.io connection setup
-const socket = io('http://localhost:3005', {
+const socket = io({
   transports: ['websocket'],
-  autoConnect: false
+  autoConnect: false,
+  path: '/vex-socket-io'
 });
 
 socket.connect();

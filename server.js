@@ -123,6 +123,8 @@ io.on('connection', (socket) => {
   socket.on('joinVexRoom', (vexId) => {
     // Only allow authenticated users to join rooms
 
+    console.log('request to join room', vexId);
+
     if (!socket.user) {
       socket.emit('error', { message: 'Not authenticated' });
       return;
