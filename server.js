@@ -50,11 +50,13 @@ const authenticateSocket = async (socket, next) => {
     // Verify token using the same secret as HTTP auth
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    const userData = await userService.User.findById(decoded.id);
     // Attach user info to socket
     socket.user = {
       id: decoded.id,
       name: decoded.username,
-      role: decoded.role
+      role: decoded.role,
+      location: userData.data.administrativeBoundaries
     };
 
     next();
@@ -70,19 +72,6 @@ app.use(cookieParser());
 app.use(express.json());
 
 // Livereload setup
-const livereload = require('livereload');
-const connectLivereload = require('connect-livereload');
-
-// Start livereload server on default port 35729
-const liveReloadServer = livereload.createServer();
-liveReloadServer.watch([
-  __dirname + '/services/utils',
-  __dirname + '/services/users/client',
-  __dirname + '/services/vertex/client'
-]);
-
-// Add connect-livereload middleware before static serving
-app.use(connectLivereload());
 
 // Serve static files from utils directory
 app.use('/vex/utils', express.static('services/utils'));
@@ -123,29 +112,55 @@ io.on('connection', (socket) => {
   socket.on('joinVexRoom', (vexId) => {
     // Only allow authenticated users to join rooms
 
-    console.log('request to join room', vexId);
-
     if (!socket.user) {
       socket.emit('error', { message: 'Not authenticated' });
       return;
     }
-    socket.join(`vex-${vexId}`);
+    if (!socket.user.location) {
+      socket.emit('error', { message: 'No location found' });
+      return;
+    }
+
+    console.log('accessing location', socket.user.location);
+
+    // room id is vex-${vexId}-location-${location}
+    // join each location
+    socket.user.location.forEach((location) => {
+      console.log('location', location);
+      console.log('joining room', `vex-${vexId}-location-${location._id}`);
+      socket.join(`vex-${vexId}-location-${location._id}`);
+    });
   });
 
   // Leave a room when no longer viewing the thread
   socket.on('leaveVexRoom', (vexId) => {
-    socket.leave(`vex-${vexId}`);
+    if (!socket.user) {
+      return;
+    }
+    if (!socket.user.location) {
+      return;
+    }
+    // leave each location
+    socket.user.location.forEach((location) => {
+      socket.leave(`vex-${vexId}-location-${location._id}`);
+    });
   });
 
   socket.on('disconnect', () => {
     // Handle disconnection
+    // leave each location
+    if (!socket.user) {
+      return;
+    }
+    if (!socket.user.location) {
+      return;
+    }
+    socket.user.location.forEach((location) => {
+      socket.leave(`vex-${socket.user.id}-location-${location._id}`);
+    });
   });
 });
 
 server.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
-  if (liveReloadServer) {
-    // Only trigger livereload refresh after server is ready
-    liveReloadServer.refresh('/');
-  }
 });

@@ -198,6 +198,10 @@ class LocationPickerDialog extends HTMLElement {
             .sort((a, b) => Number(a.properties.admin_level) - Number(b.properties.admin_level))
             .map(b => b.properties.name)
             .pop();
+
+          // store the hierarchy
+          this.administrativeHierarchy = userData.data.administrativeBoundaries;
+
           this.shadowRoot.querySelector('.location-button span').textContent = location || 'Pick Location';
         }
       }

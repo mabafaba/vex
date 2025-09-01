@@ -44,14 +44,15 @@ router.post('/', async (req, res) => {
       // Emit socket event for each parent to notify listeners that a new child was added
 
       if (io) {
+        // last item of req.body.locations
+        const largestLocation = req.body.locations[0];
         // Get all sockets in the room
-        const room = io.sockets.adapter.rooms.get(`vex-${parent._id}`);
+        const room = io.sockets.adapter.rooms.get(`vex-${parent._id}-location-${largestLocation}`);
         if (room) {
           // For each socket in the room, verify it's authenticated before sending
           for (const socketId of room) {
             const socket = io.sockets.sockets.get(socketId);
             if (socket && socket.user) {
-              console.log('sending newChild to socket', socketId);
               // Only send the new vex ID
               socket.emit('newChild', {
                 parentId: parent._id,
@@ -198,7 +199,7 @@ router.get('/:id/children/:sorting', async (req, res) => {
       });
     } else {
       // Default sort by date (newest first)
-      children.sort((a, b) => b.createdAt - a.createdAt);
+      children.sort((a, b) => a.createdAt - b.createdAt);
     }
 
     // unpopulate the reactions field
