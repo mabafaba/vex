@@ -71,6 +71,18 @@ io.use(authenticateSocket);
 app.use(cookieParser());
 app.use(express.json());
 
+// PWA static files
+app.use('/icons', express.static('icons'));
+app.use(express.static('.', {
+  index: false,
+  setHeaders: (res, path) => {
+    if (path.endsWith('sw.js')) {
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
+
 // Livereload setup
 
 // Serve static files from utils directory
@@ -105,6 +117,21 @@ app.get('/vex/user/logout', authenticate, (req, res, next) => {
 });
 
 app.use('/vex/user', authenticate, authorize, userService.app);
+
+// PWA routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'services/vertex/client/test.html'));
+});
+
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'manifest.json'));
+});
+
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(path.join(__dirname, 'sw.js'));
+});
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

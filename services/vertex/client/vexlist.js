@@ -181,7 +181,9 @@ class VexList extends HTMLElement {
   }
 
   joinRoom (vexId) {
-    console.log('joining room', vexId);
+    console.log('joining room for vex', vexId);
+    // which location is the user regsitered in?
+
     this._socket.emit('joinVexRoom', vexId);
   }
 
