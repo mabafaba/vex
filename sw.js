@@ -23,6 +23,18 @@ const STATIC_ASSETS = [
   '/vex/user/static/locationpickerdialog.js',
   '/vex/administrative/static/leafletlocationpicker.js',
   '/vex/reactions/static/reactionbuttons.js',
+  // PWA Icons
+  '/vex/icons/android/android-launchericon-48-48.png',
+  '/vex/icons/android/android-launchericon-72-72.png',
+  '/vex/icons/android/android-launchericon-96-96.png',
+  '/vex/icons/android/android-launchericon-144-144.png',
+  '/vex/icons/android/android-launchericon-192-192.png',
+  '/vex/icons/android/android-launchericon-512-512.png',
+  '/vex/icons/ios/32.png',
+  '/vex/icons/ios/152.png',
+  '/vex/icons/ios/167.png',
+  '/vex/icons/ios/180.png',
+  '/vex/icons/ios/256.png',
   // External CDN resources
   'https://cdn.socket.io/4.8.1/socket.io.min.js',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -181,8 +193,8 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
+      icon: '/vex/icons/android/android-launchericon-192-192.png',
+      badge: '/vex/icons/android/android-launchericon-72-72.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),

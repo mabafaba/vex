@@ -72,7 +72,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 // PWA static files
-app.use('/icons', express.static('icons'));
+app.use('/vex/icons', express.static('icons'));
 app.use(express.static('.', {
   index: false,
   setHeaders: (res, path) => {
