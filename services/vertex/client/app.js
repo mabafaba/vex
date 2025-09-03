@@ -176,11 +176,13 @@ function setupEventListeners (slidingThreads, mainContainer) {
 
   // login-success event on user-status should reload the page
   document.addEventListener('login-success', () => {
+    console.log('login success event listener');
     reloadMainThread();
   });
 
   // logout event should also reload the thread
   document.addEventListener('user-logout', () => {
+    console.log('user logout event listener');
     reloadMainThread();
   });
 

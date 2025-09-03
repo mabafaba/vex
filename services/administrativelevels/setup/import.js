@@ -17,7 +17,7 @@ async function importGeoJSON (filePath, databaseName, collectionName) {
     --collection ${COLLECTION_NAME} \
     --file ${filePath} \
     --jsonArray \
-    --drop`;  // Drop existing collection before import
+    `;  // Drop existing collection before import
 
   try {
     const { stdout, stderr } = await execPromise(command);

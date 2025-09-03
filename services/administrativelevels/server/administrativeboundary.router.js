@@ -29,6 +29,9 @@ const findLowestAdminBoundary = async function (longitude, latitude) {
 const findAdminBoundaries = async function (longitude, latitude) {
   console.log('findAdminBoundaries', longitude, latitude);
 
+  // find world boundary
+  const worldBoundary = await AdministrativeBoundary.findOne({ 'properties.admin_level': '0' });
+
   // Find level 2 boundary containing the point
   const level2Boundary = await AdministrativeBoundary.findOne({
     geometry: {
@@ -47,7 +50,7 @@ const findAdminBoundaries = async function (longitude, latitude) {
     return [];
   }
 
-  const results = [level2Boundary];
+  const results = [worldBoundary, level2Boundary];
   let currentBoundary = level2Boundary;
   let currentLevel = 2;
   let possibleCandidates = false;

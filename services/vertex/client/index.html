@@ -14,7 +14,7 @@
     <meta name="msapplication-TileColor" content="#4285f4">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/vex/manifest.json">
     
     <!-- Icons -->
     <link rel="icon" type="image/png" href="/vex/icons/ios/32.png">
@@ -40,19 +40,19 @@
     <script src="/vex/utils/reactivestateelement.js"></script>
     <script src="/vex/utils/livemodelelement/livemodelelement.js"></script>
     
-    <script src="./vexcomponent.js"></script>
-    <script src="./stacked-buttons-ordinal-selection.js"></script>
-    <script src="./vexinputcomponent.js"></script>
-    <script src="./geoscaleinputcomponent.js"></script>
-    <script src="./vexbreadcrumbs.js"></script>
-    <script src="./vexlist.js"></script>
-    <script src="./vexreactions.js"></script>
-    <script src="./vexthread.js"></script>
-    <script src="./sliding-page.js"></script>
-    <script src="./vex-sliding-threads.js"></script>
-    <script src="./ordinal-slider.js"></script>
+    <script src="/vex/vertex/static/vexcomponent.js"></script>
+    <script src="/vex/vertex/static/stacked-buttons-ordinal-selection.js"></script>
+    <script src="/vex/vertex/static/vexinputcomponent.js"></script>
+    <script src="/vex/vertex/static/geoscaleinputcomponent.js"></script>
+    <script src="/vex/vertex/static/vexbreadcrumbs.js"></script>
+    <script src="/vex/vertex/static/vexlist.js"></script>
+    <script src="/vex/vertex/static/vexreactions.js"></script>
+    <script src="/vex/vertex/static/vexthread.js"></script>
+    <script src="/vex/vertex/static/sliding-page.js"></script>
+    <script src="/vex/vertex/static/vex-sliding-threads.js"></script>
+    <script src="/vex/vertex/static/ordinal-slider.js"></script>
     
-    <script src="./vexsortcontrols.js"></script>
+    <script src="/vex/vertex/static/vexsortcontrols.js"></script>
     <script src="/vex/reactions/static/reactionbuttons.js"></script>
     <script src="/vex/user/static/authform.js"></script>
     <script src="/vex/user/static/userstatus.js"></script>
@@ -65,14 +65,14 @@
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <!-- Main application entry point -->
-    <script src="./app.js"></script>
+    <script src="/vex/vertex/static/app.js"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
       // Register service worker for PWA functionality
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          navigator.serviceWorker.register('/vex/sw.js', { scope: '/vex/' })
             .then((registration) => {
               console.log('Service Worker registered successfully:', registration.scope);
               

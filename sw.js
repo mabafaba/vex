@@ -5,8 +5,8 @@ const DYNAMIC_CACHE_NAME = 'vex-dynamic-v1.0.0';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
+  '/vex/',
+  '/vex/manifest.json',
   '/vex/vertex/static/test.html',
   '/vex/vertex/static/app.js',
   '/vex/vertex/static/vexcomponent.js',
@@ -44,9 +44,9 @@ const STATIC_ASSETS = [
 
 // API endpoints that should be cached
 const API_CACHE_PATTERNS = [
-  /^\/vex\/vertex\/initial$/,
-  /^\/vex\/user\/me$/,
-  /^\/vex\/vertex\/\w+$/
+  // /^\/vex\/vertex\/initial$/,
+  // /^\/vex\/user\/me$/,
+  // /^\/vex\/vertex\/\w+$/
 ];
 
 // Install event - cache static assets

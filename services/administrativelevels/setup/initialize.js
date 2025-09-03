@@ -1,11 +1,14 @@
 const path = require('path');
 const mongoose = require('mongoose');
-const { AdministrativeBoundary, importProgress: modelProgress } = require('./server/administrativeboundary.model');
-const { importGeoJSON, importProgress } = require('./setup/import');
+const { AdministrativeBoundary, importProgress: modelProgress } = require('../server/administrativeboundary.model');
+const { importGeoJSON, importProgress } = require('./import');
 const ProgressBar = require('progress');
-const connectDB = require('../database');
+const connectDB = require('../../database');
 
-const GEOJSON_PATH = path.join(__dirname, '../../data', 'admin_boundaries_germany.geojson');
+// const GEOJSON_PATH = path.join(__dirname, '../../data', 'admin_boundaries_germany.geojson');
+
+const GEOJSON_PATH = path.join(__dirname, '../../data', 'admin_boundaries_mexico.geojson');
+
 const DATABASE_NAME = 'vex';
 const COLLECTION_NAME = 'admin_boundaries';
 console.log('GEOJSON_PATH', GEOJSON_PATH);
@@ -54,7 +57,7 @@ async function initializeAdminBoundaries (geojsonFilePath = GEOJSON_PATH) {
   try {
     // First import the GeoJSON using mongoimport
     currentOperation = 'Import';
-    await importGeoJSON(geojsonFilePath, DATABASE_NAME, COLLECTION_NAME);
+    // await importGeoJSON(geojsonFilePath, DATABASE_NAME, COLLECTION_NAME);
 
     // delete all documents in the collection without properties.admin_level
     console.log('Deleting documents without properties.admin_level');
@@ -79,8 +82,17 @@ async function initializeAdminBoundaries (geojsonFilePath = GEOJSON_PATH) {
 
 // If running this script directly
 if (require.main === module) {
+  // Get GeoJSON file path from command line argument or use default
+  const geojsonFilePath = process.argv[2] || GEOJSON_PATH;
+
+  if (process.argv[2]) {
+    console.log('Using GeoJSON file from command line:', geojsonFilePath);
+  } else {
+    console.log('Using default GeoJSON file:', geojsonFilePath);
+  }
+
   connectDB(DATABASE_NAME)
-    .then(() => initializeAdminBoundaries())
+    .then(() => initializeAdminBoundaries(geojsonFilePath))
     .then(() => {
       console.log('\nInitialization completed successfully');
       process.exit(0);

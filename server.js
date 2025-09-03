@@ -71,13 +71,15 @@ io.use(authenticateSocket);
 app.use(cookieParser());
 app.use(express.json());
 
+// ...
 // PWA static files
 app.use('/vex/icons', express.static('icons'));
-app.use(express.static('.', {
+
+app.use('/vex', express.static('.', {
   index: false,
   setHeaders: (res, path) => {
     if (path.endsWith('sw.js')) {
-      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Service-Worker-Allowed', '/vex/');
       res.setHeader('Cache-Control', 'no-cache');
     }
   }
@@ -118,25 +120,34 @@ app.get('/vex/user/logout', authenticate, (req, res, next) => {
 
 app.use('/vex/user', authenticate, authorize, userService.app);
 
-// PWA routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'services/vertex/client/test.html'));
+// PWA routes - serve main app at /vex
+app.get('/vex', (req, res) => {
+  res.sendFile(path.join(__dirname, 'services/vertex/client/index.html'));
 });
 
-app.get('/manifest.json', (req, res) => {
+app.get('/vex/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'services/vertex/client/index.html'));
+});
+
+app.get('/vex/manifest.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'manifest.json'));
 });
 
-app.get('/sw.js', (req, res) => {
-  res.setHeader('Service-Worker-Allowed', '/');
+app.get('/vex/sw.js', (req, res) => {
+  res.setHeader('Service-Worker-Allowed', '/vex/');
   res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'sw.js'));
 });
 
+// Redirect root to /vex for convenience
+app.get('/', (req, res) => {
+  res.redirect('/vex');
+});
+
 // Socket.io connection handling
-io.on('connection', (socket) => {
+io.on('connection',  (socket) => {
   // Join a room for a specific vex thread
-  socket.on('joinVexRoom', (vexId) => {
+  socket.on('joinVexRoom', async (vexId) => {
     // Only allow authenticated users to join rooms
 
     if (!socket.user) {
@@ -148,13 +159,14 @@ io.on('connection', (socket) => {
       return;
     }
 
-    console.log('accessing location', socket.user.location);
+    // update user location
+    const userData = await userService.User.findById(socket.user.id);
+    socket.user.location = userData.data.administrativeBoundaries;
 
     // room id is vex-${vexId}-location-${location}
     // join each location
     socket.user.location.forEach((location) => {
-      console.log('location', location);
-      console.log('joining room', `vex-${vexId}-location-${location._id}`);
+      console.log('joining room', `vex-${vexId}-location-${location._id}`, location.properties.name);
       socket.join(`vex-${vexId}-location-${location._id}`);
     });
   });

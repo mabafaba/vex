@@ -62,7 +62,9 @@ AdministrativeBoundarySchema.index({
 // Static method to update parent-child relationships
 AdministrativeBoundarySchema.statics.updateRelationships = async function () {
   // 1. Get all boundaries
-  const boundaries = await this.find({}).lean();
+  // const boundaries = await this.find({}).lean();
+  // no, get all boundaries that dont yet have parents or children
+  const boundaries = await this.find({ parents: { $exists: false }, children: { $exists: false } }).lean();
   importProgress.emit('total', boundaries.length);
   importProgress.emit('status', 'Calculating centroids...');
 
@@ -165,11 +167,58 @@ AdministrativeBoundarySchema.statics.updateRelationships = async function () {
     await this.bulkWrite(chunk, { ordered: false });
   }
 
+  // update world boundary with all level 2 boundaries as children
+  const world = await AdministrativeBoundary.findOne({ 'properties.name': '🌍' });
+  const level2Boundaries = await AdministrativeBoundary.find({ 'properties.admin_level': '2' });
+  world.children = level2Boundaries.map(boundary => boundary._id);
+  await world.save();
+
+  // update all level 2 boundaries with the world boundary as a parent (make sure not twice in array)
+  level2Boundaries.forEach(boundary => {
+    boundary.parents = boundary.parents.filter(parent => parent._id.toString() !== world._id.toString());
+    boundary.parents.push(world._id);
+    boundary.save();
+  });
+
   importProgress.emit('progress', boundaries.length);
   importProgress.emit('status', 'Relationship updates completed');
 };
 
 const AdministrativeBoundary = mongoose.model('AdministrativeBoundary', AdministrativeBoundarySchema);
+
+// create element for entire world
+
+// Create world boundary if it doesn't exist
+AdministrativeBoundary.findOne({ 'properties.name': '🌍' }).then(async (existingWorld) => {
+  if (!existingWorld) {
+    const worldBoundary = {
+      type: 'Feature',
+      properties: {
+        name: '🌍',
+        admin_level: '0',
+        boundary: 'administrative'
+      },
+      geometry: {
+        type: 'MultiPolygon',
+        coordinates: [[[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]]]
+      }
+    };
+    const world = new AdministrativeBoundary(worldBoundary);
+    await world.save();
+
+    // all level 2 boundaries should have the world boundary as a parent
+    // and the world boundary should have all level 2 boundaries as children
+    const level2Boundaries = await AdministrativeBoundary.find({ 'properties.admin_level': '2' });
+    level2Boundaries.forEach(boundary => {
+      boundary.parents.push(world._id);
+      world.children.push(boundary._id);
+    });
+    await world.save();
+    await Promise.all(level2Boundaries.map(boundary => boundary.save()));
+  } else {
+    console.log('World boundary already exists');
+  }
+});
 
 module.exports = {
   AdministrativeBoundary,

@@ -2,7 +2,7 @@
   "name": "Vex - Location-Based Discussion Platform",
   "short_name": "Vex",
   "description": "A location-based discussion platform with real-time communication",
-  "start_url": "/vex/vertex/static/test.html",
+  "start_url": "/vex/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4285f4",
