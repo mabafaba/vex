@@ -33,6 +33,11 @@ const { authorize, authenticate } = require('./authorizations');
 
 // WebSocket authentication middleware
 const authenticateSocket = async (socket, next) => {
+  // Skip authentication for remotetouch connections
+  if (socket.handshake.query?.skipAuth === 'true') {
+    return next();
+  }
+
   next();
   try {
     // Get token from handshake

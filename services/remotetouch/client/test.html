@@ -51,14 +51,12 @@
         }
 
         function initSocket() {
-            // Get JWT token from cookie for authentication
-            const token = getCookie('jwt');
-            
             socket = io({
                 path: '/vex-socket-io',
-                auth: {
-                    token: token
-                }
+                query: {
+                    skipAuth: 'true'
+                },
+                transports: ['websocket', 'polling']
             });
 
             socket.on('connect', () => {
