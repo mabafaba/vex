@@ -229,6 +229,14 @@ const routes = [
     condition: isAuthenticated,
     notAuthorized: send403,
     notLoggedIn: send401
+  },
+  {
+    method: 'GET',
+    path: '/vex/remotetouch/.*',
+    // let pass anyone
+    condition: anyone,
+    notAuthorized: pass,
+    notLoggedIn: pass
   }
 
 ];

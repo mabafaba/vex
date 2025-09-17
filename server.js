@@ -25,6 +25,7 @@ const io = require('./services/utils/io')(server);
 
 const reactionsService = require('./services/reactions');
 const vertexService = require('./services/vertex');
+const remotetouchService = require('./services/remotetouch');
 
 const administrativeLevelsService = require('./services/administrativelevels').router;
 
@@ -100,6 +101,8 @@ app.use('/vex/reactions', authenticate, reactionsService.router);
 
 app.use('/vex/vertex', authenticate, authorize, vertexService.router);
 
+app.use('/vex/remotetouch', remotetouchService.router);
+
 // on logout, end all socket interactions
 app.get('/vex/user/logout', authenticate, (req, res, next) => {
   if (!req.user) {
@@ -146,6 +149,41 @@ app.get('/', (req, res) => {
 
 // Socket.io connection handling
 io.on('connection',  (socket) => {
+  // Remote Touch functionality
+  socket.on('join-remotetouch', () => {
+    socket.join('remotetouch-room');
+
+    // Get all clients in the remotetouch room
+    const room = io.sockets.adapter.rooms.get('remotetouch-room');
+    const clients = {};
+
+    if (room) {
+      for (const socketId of room) {
+        const clientSocket = io.sockets.sockets.get(socketId);
+        if (clientSocket) {
+          clients[socketId] = {
+            id: socketId,
+            hovering: false,
+            hoveredIndex: -1
+          };
+        }
+      }
+    }
+
+    // Send updated client list to all clients in the room
+    io.to('remotetouch-room').emit('remotetouch-clients', { clients });
+  });
+
+  socket.on('remotetouch-hover', (data) => {
+    // Update hover state and broadcast to all clients in the room
+    socket.to('remotetouch-room').emit('remotetouch-hover', {
+      clientId: socket.id,
+      hovering: data.hovering,
+      hoveredIndex: data.hoveredIndex,
+      hoveredClientId: data.hoveredClientId
+    });
+  });
+
   // Join a room for a specific vex thread
   socket.on('joinVexRoom', async (vexId) => {
     // Only allow authenticated users to join rooms
@@ -186,7 +224,25 @@ io.on('connection',  (socket) => {
   });
 
   socket.on('disconnect', () => {
-    // Handle disconnection
+    // Handle remotetouch disconnection
+    const remotetouchRoom = io.sockets.adapter.rooms.get('remotetouch-room');
+    if (remotetouchRoom) {
+      const clients = {};
+      for (const socketId of remotetouchRoom) {
+        const clientSocket = io.sockets.sockets.get(socketId);
+        if (clientSocket) {
+          clients[socketId] = {
+            id: socketId,
+            hovering: false,
+            hoveredIndex: -1
+          };
+        }
+      }
+      // Send updated client list to remaining clients
+      io.to('remotetouch-room').emit('remotetouch-clients', { clients });
+    }
+
+    // Handle vex disconnection
     // leave each location
     if (!socket.user) {
       return;
