@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Touch - Collaborative Circles</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Connected clients: <span id="clientCount">0</span></div>
+    
+    <script>
+        // Socket.io connection
+        let socket;
+        let clientId = null;
+        let clients = {};
+        let circles = [];
+        let hoveredCircle = -1;
+        let backgroundBrightness = 0;
+        let targetBackgroundBrightness = 0;
+        let backgroundHue = 0;
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            colorMode(HSB, 360, 100, 100); // Use HSB color mode for easier color transitions
+            
+            // Initialize socket connection
+            initSocket();
+        }
+
+        function initSocket() {
+            // Get JWT token from cookie for authentication
+            const token = getCookie('jwt');
+            
+            socket = io({
+                path: '/vex-socket-io',
+                auth: {
+                    token: token
+                }
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                clientId = socket.id;
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+            });
+
+            // Listen for client updates
+            socket.on('remotetouch-clients', (data) => {
+                clients = data.clients;
+                updateCircles();
+                updateClientCount();
+            });
+
+            // Listen for hover events from other clients
+            socket.on('remotetouch-hover', (data) => {
+                if (data.clientId !== clientId) {
+                    // Update the hover state for the client being hovered
+                    if (data.hoveredClientId && clients[data.hoveredClientId]) {
+                        clients[data.hoveredClientId].hovering = data.hovering;
+                        clients[data.hoveredClientId].hoveredIndex = data.hoveredIndex;
+                    }
+                    
+                    // Clear hover state for all other clients from this hovering client
+                    Object.keys(clients).forEach(id => {
+                        if (id !== data.hoveredClientId) {
+                            if (clients[id].hoveredBy === data.clientId) {
+                                clients[id].hovering = false;
+                                clients[id].hoveredIndex = -1;
+                                delete clients[id].hoveredBy;
+                            }
+                        }
+                    });
+                    
+                    // Mark which client is doing the hovering
+                    if (data.hovering && data.hoveredClientId && clients[data.hoveredClientId]) {
+                        clients[data.hoveredClientId].hoveredBy = data.clientId;
+                    }
+                }
+            });
+
+            // Join the remotetouch room
+            socket.emit('join-remotetouch');
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function updateCircles() {
+            const clientIds = Object.keys(clients);
+            circles = [];
+            
+            if (clientIds.length === 0) return;
+
+            // Sort client IDs to ensure consistent order across all clients
+            const sortedClientIds = clientIds.sort();
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = min(width, height) * 0.3;
+            const angleStep = TWO_PI / sortedClientIds.length;
+
+            sortedClientIds.forEach((id, index) => {
+                const angle = index * angleStep - PI / 2; // Start from top
+                const x = centerX + cos(angle) * radius;
+                const y = centerY + sin(angle) * radius;
+                
+                circles.push({
+                    x: x,
+                    y: y,
+                    clientId: id,
+                    index: index
+                });
+            });
+        }
+
+        function updateClientCount() {
+            document.getElementById('clientCount').textContent = Object.keys(clients).length;
+        }
+
+        function draw() {
+            // Check if all circles are being hovered (only if at least 2 clients)
+            const allHovered = circles.length >= 2 && circles.every(circle => {
+                
+                const client = clients[circle.clientId];
+                return client && client.hovering;
+            });
+
+
+            // Animate background
+            if (allHovered) {
+                // Slowly transition to bright colors and start pulsating
+                targetBackgroundBrightness = 80;
+                backgroundBrightness = lerp(backgroundBrightness, targetBackgroundBrightness, 0.05);
+                
+                // Pulsate between bright pink (320°) and violet (280°)
+                const pulsation = sin(millis() * 0.001) * 0.5 + 0.5; // Slow pulsation
+                backgroundHue = lerp(320, 280, pulsation); // Pink to Violet
+                
+                background(backgroundHue, 85, backgroundBrightness);
+            } else {
+                // Fade back to black
+                targetBackgroundBrightness = 0;
+                backgroundBrightness = lerp(backgroundBrightness, targetBackgroundBrightness, 0.05);
+                background(0, 0, backgroundBrightness);
+            }
+
+            // Check mouse hover for current client
+            let newHoveredCircle = -1;
+            for (let i = 0; i < circles.length; i++) {
+                const circle = circles[i];
+                const distance = dist(mouseX, mouseY, circle.x, circle.y);
+                if (distance < 50) {
+                    newHoveredCircle = i;
+                    break;
+                }
+            }
+
+            // Send hover update if changed
+            if (newHoveredCircle !== hoveredCircle) {
+                // Clear previous local hover state
+                if (hoveredCircle !== -1 && circles[hoveredCircle]) {
+                    const prevHoveredClientId = circles[hoveredCircle].clientId;
+                    if (clients[prevHoveredClientId]) {
+                        clients[prevHoveredClientId].hovering = false;
+                        clients[prevHoveredClientId].hoveredIndex = -1;
+                    }
+                }
+                
+                hoveredCircle = newHoveredCircle;
+                
+                // Update local hover state
+                if (hoveredCircle !== -1 && circles[hoveredCircle]) {
+                    const hoveredClientId = circles[hoveredCircle].clientId;
+                    if (clients[hoveredClientId]) {
+                        clients[hoveredClientId].hovering = true;
+                        clients[hoveredClientId].hoveredIndex = hoveredCircle;
+                    }
+                }
+                
+                if (socket && socket.connected) {
+                    // Send the client ID being hovered instead of just the index
+                    const hoveredClientId = hoveredCircle !== -1 ? circles[hoveredCircle].clientId : null;
+                    socket.emit('remotetouch-hover', {
+                        hovering: hoveredCircle !== -1,
+                        hoveredIndex: hoveredCircle,
+                        hoveredClientId: hoveredClientId
+                    });
+                }
+            }
+
+            // Draw circles
+            circles.forEach((circle, index) => {
+                const client = clients[circle.clientId];
+                const isHoveredByOther = client && client.hovering;
+                const isHoveredByMe = hoveredCircle === index;
+                const isHovered = isHoveredByOther || isHoveredByMe;
+                
+                // Circle appearance
+                let circleSize = 50;
+                let circleColor = color(220, 60, 80); // Blue in HSB
+
+                if (isHovered) {
+                    // Pulsating effect
+                    const pulse = sin(millis() * 0.01) * 0.3 + 0.7;
+                    circleSize = 50 + pulse * 30;
+                    // Red/orange pulsating color in HSB
+                    circleColor = color(10, 80, 70 + pulse * 30);
+                }
+
+                fill(circleColor);
+                noStroke();
+                ellipse(circle.x, circle.y, circleSize);
+
+                // Draw client indicator (small dot in center)
+                fill(0, 0, 100); // White in HSB
+                ellipse(circle.x, circle.y, 8);
+            });
+
+            // Draw connection lines if multiple clients
+            if (circles.length > 1) {
+                stroke(0, 0, 30); // Gray in HSB
+                strokeWeight(1);
+                noFill();
+                beginShape();
+                circles.forEach(circle => {
+                    vertex(circle.x, circle.y);
+                });
+                endShape(CLOSE);
+            }
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            updateCircles();
+        }
+
+        // Handle touch events for mobile
+        function touchMoved() {
+            return false; // Prevent scrolling
+        }
+
+        function touchStarted() {
+            return false; // Prevent default touch behavior
+        }
+    </script>
+</body>
+</html>
