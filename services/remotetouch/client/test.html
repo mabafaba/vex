@@ -38,6 +38,7 @@
         let clients = {};
         let circles = [];
         let hoveredCircle = -1;
+        let isTouching = false;
         let backgroundBrightness = 0;
         let targetBackgroundBrightness = 0;
         let backgroundHue = 0;
@@ -172,15 +173,28 @@
                 background(0, 0, backgroundBrightness);
             }
 
-            // Check mouse hover for current client
+            // Check mouse/touch hover for current client
             let newHoveredCircle = -1;
-            for (let i = 0; i < circles.length; i++) {
-                const circle = circles[i];
-                const distance = dist(mouseX, mouseY, circle.x, circle.y);
-                if (distance < 50) {
-                    newHoveredCircle = i;
-                    break;
+            
+            // Use touch coordinates if touching, otherwise mouse coordinates
+            const currentX = isTouching ? touches[0]?.x || mouseX : mouseX;
+            const currentY = isTouching ? touches[0]?.y || mouseY : mouseY;
+            
+            // Only check for hover if we're touching or if it's a desktop mouse hover
+            if (isTouching || (!isTouching && mouseX !== pmouseX || mouseY !== pmouseY)) {
+                for (let i = 0; i < circles.length; i++) {
+                    const circle = circles[i];
+                    const distance = dist(currentX, currentY, circle.x, circle.y);
+                    if (distance < 50) {
+                        newHoveredCircle = i;
+                        break;
+                    }
                 }
+            }
+            
+            // If not touching and on mobile, clear hover
+            if (!isTouching && touches.length === 0 && 'ontouchstart' in window) {
+                newHoveredCircle = -1;
             }
 
             // Send hover update if changed
@@ -263,12 +277,19 @@
         }
 
         // Handle touch events for mobile
-        function touchMoved() {
-            return false; // Prevent scrolling
+        function touchStarted() {
+            isTouching = true;
+            return false; // Prevent default touch behavior
         }
 
-        function touchStarted() {
+        function touchEnded() {
+            isTouching = false;
             return false; // Prevent default touch behavior
+        }
+
+        function touchMoved() {
+            // Keep touching state true during move
+            return false; // Prevent scrolling
         }
     </script>
 </body>
