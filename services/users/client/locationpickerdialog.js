@@ -187,6 +187,7 @@ class LocationPickerDialog extends HTMLElement {
   }
 
   async loadCurrentLocation () {
+    console.log('loading current location');
     try {
       const response = await fetch('/vex/user/me', {
         credentials: 'include'

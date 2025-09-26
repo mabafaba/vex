@@ -435,6 +435,7 @@ class RegistrationForm extends HTMLElement {
     registrationButton.removeEventListener('click', () => {});
 
     registrationButton.addEventListener('click', async (e) => {
+      console.log('registrationButton clicked');
       if (
         password.value !==
         this.shadowRoot.querySelector('#confirm-password').value
@@ -456,14 +457,20 @@ class RegistrationForm extends HTMLElement {
           headers: { 'Content-Type': 'application/json' }
         });
         const data = await res.json();
-
+        console.log('data', data);
+        console.log('res', res);
         if (res.status === 200 || res.status === 201) {
+          console.log('dispatching registered-success event because register-endpoint was called successfully');
+          console.log('here we go...');
+          console.log('data', data);
+          const registeredSuccessEvent = new CustomEvent('registered-success', {
+            bubbles: true,
+            composed: true,
+            detail: { user: data }
+          });
+
           this.dispatchEvent(
-            new CustomEvent('registered', {
-              bubbles: true,
-              composed: true,
-              detail: { user: data }
-            })
+            registeredSuccessEvent
           );
 
           const res = await fetch(this.getAttribute('login-endpoint'), {
@@ -474,41 +481,49 @@ class RegistrationForm extends HTMLElement {
             }),
             headers: { 'Content-Type': 'application/json' }
           });
-          const data = await res.json();
+          const loginData = await res.json();
+
+          console.log('registration call status:', res.status);
 
           if (res.status === 400 || res.status === 401) {
+            console.log('dispatching login-failed event because login-endpoint was called unsuccessfully');
             this.dispatchEvent(
               new CustomEvent('log-in-failed', {
                 bubbles: true,
                 composed: true,
-                detail: { error: data.message }
+                detail: { error: loginData.message }
               })
             );
-            display.textContent = `${data.message}. ${
-              data.error ? data.error : ''
+            display.textContent = `${loginData.message}. ${
+              loginData.error ? loginData.error : ''
             }`;
           } else {
+            console.log('dispatching login-success event because login-endpoint was called successfully');
             this.dispatchEvent(
-              new CustomEvent('logged-in', {
+              new CustomEvent('login-success', {
                 bubbles: true,
                 composed: true,
-                detail: { user: data }
+                detail: { user: loginData }
               })
             );
           }
         } else if (res.status === 400 || res.status === 401) {
+          console.log('dispatching registration-failed event because register-endpoint was called unsuccessfully');
           this.dispatchEvent(
             new CustomEvent('registration-failed', {
               bubbles: true,
               composed: true,
-              detail: { error: data.message }
+              detail: { error: loginData.message }
             })
           );
-          display.textContent = `${data.message}. ${
-            data.error ? data.error : ''
+          display.textContent = `${loginData.message}. ${
+            loginData.error ? loginData.error : ''
           }`;
         }
       } catch (err) {
+        // show error in console
+        console.error('registration failed', err);
+
         this.dispatchEvent(
           new CustomEvent('registration-failed', {
             bubbles: true,
@@ -517,7 +532,8 @@ class RegistrationForm extends HTMLElement {
           })
         );
       }
-    });
+    }
+    );
   }
 }
 

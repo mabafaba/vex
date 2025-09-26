@@ -112,6 +112,11 @@ function slidePrev (container, duration = 400, onAway = () => {}, onFinish = () 
  * Function to reload the main thread
  */
 function reloadMainThread () {
+  console.log('reloadMainThread');
+  // update location picker dialog
+  const locationPickerDialog = document.querySelector('location-picker-dialog');
+  locationPickerDialog.loadCurrentLocation();
+  // update main thread
   const slidingThreads = document.getElementById('main-sliding-threads');
   const currentVexId = slidingThreads.getAttribute('vex-id');
   // Re-set the vex-id to force a refresh
@@ -159,6 +164,12 @@ function setupEventListeners (slidingThreads, mainContainer) {
     const vexId = e.detail.vexId;
     // Set the vex-id on the sliding threads
     slidingThreads.setAttribute('vex-id', vexId);
+    // set vex id as ?id= in the url
+    console.log('setting vex id in url', vexId);
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('id', vexId);
+    window.history.pushState({}, '', `?${urlParams.toString()}`);
+
     slideNext(mainContainer, 300, () => {
       // Animation callback
     });
@@ -175,8 +186,13 @@ function setupEventListeners (slidingThreads, mainContainer) {
   });
 
   // login-success event on user-status should reload the page
+  // same effect for registered-success
   document.addEventListener('login-success', () => {
-    console.log('login success event listener');
+    console.log('login success event listener in app.js');
+    reloadMainThread();
+  });
+  document.addEventListener('registered-success', () => {
+    console.log('registered success event listener in app.js');
     reloadMainThread();
   });
 
@@ -199,6 +215,10 @@ function setupEventListeners (slidingThreads, mainContainer) {
       if (!document.querySelector('location-picker-dialog')) {
         const dialog = document.createElement('location-picker-dialog');
         document.querySelector('.user-status-container').appendChild(dialog);
+      } else {
+        console.log('location picker dialog already exists');
+        const dialog = document.querySelector('location-picker-dialog');
+        dialog.loadCurrentLocation();
       }
     } catch (error) {
       console.error('Error checking user location data:', error);
@@ -225,6 +245,7 @@ async function checkUserLocation () {
 
         // Add event listener for location-saved event
         dialog.addEventListener('location-saved', () => {
+          console.log('location saved event listener in app.js');
           // Refresh the main thread by triggering a re-render
           const slidingThreads = document.getElementById('main-sliding-threads');
           const currentVexId = slidingThreads.getAttribute('vex-id');

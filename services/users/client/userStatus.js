@@ -81,6 +81,7 @@ class UserStatus extends HTMLElement {
         window.state.username = this.user.name;
         this.isLoggedIn = true;
         // Dispatch login success event when user data is fetched successfully
+        console.log('user-status dispatching login-success event');
         this.dispatchEvent(new CustomEvent('login-success', {
           bubbles: true,
           composed: true,
@@ -161,6 +162,13 @@ class UserStatus extends HTMLElement {
     // Listen for successful login events from the auth form
     const authForm = this.shadowRoot.querySelector('authentication-form');
     authForm?.addEventListener('login-success', async (e) => {
+      this.hideLoginForm();
+      await this.fetchUserData();
+    });
+
+    // listen for successful registration events from the auth form
+    authForm?.addEventListener('registered-success', async (e) => {
+      console.log('user-status heard registered-success event');
       this.hideLoginForm();
       await this.fetchUserData();
     });

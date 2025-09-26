@@ -4,7 +4,7 @@ C) one way dependency hierarchy (never depend on larger or same level components
 D) no sneaky coupling (shared state, events, API contracts, passing complex objects, ...)
 
 
-tl;dr: build self contained features that include both backend and frontend code, strongly decoupled from other features. This solves most problems you would usually need a framework for. Build vanilla without frameworks, which allows you to work outside the backend-frontend paradigm. End up with simple, fast, code with fast learning curve, no black boxes, and fewer dependency risks.
+tl;dr: build self contained features that include both backend and frontend code, strongly decoupled from other features. Build vanilla without frameworks, which allows you to work outside the backend-frontend paradigm. End up with simple, fast code with fast learning curve, no black boxes, and fewer dependency risks.
 
 
 1. build as vanilla as possible
@@ -16,12 +16,8 @@ tl;dr: build self contained features that include both backend and frontend code
 - historically, we separate backend from frontend, and tightly couple each. 
 - however ui components are inherently coupled to the data they display
 - as a result, everything ends up connected to everything else
-- for rapid prototyping especially, tightly coupling data models with their UI components allows us to iterate super fast
+- for rapid prototyping especially, tightly coupling data models with their UI components allows us to iterate faster
 - example: we build a user database with ui components to log in / log out and view profile. Usually, the backend would be tightly coupled with the rest of the app, and the frontend as well. Instead, we pay the price of tightly coupling the user database with the UI, but keep everything related to the user separate from everything else. Now we can copy the user feature from one project to another very cheaply.
-
-3. tighly couple data and ui even more tightly
-- for example: user-model + user-ui-components in a single service.
-- they depend on each other *anyway*. Any small change in the model will require a change in the component, and often vice versa. Let's just make it explicit. And put them in the same folder. And make a real effort to keep them decoupled from everything else.
 
 
 ## llm instructions to adhere to philosophy
@@ -66,7 +62,7 @@ tl;dr: build self contained features that include both backend and frontend code
 
    - Identify and document all forms of coupling
    - Consider API contracts, data structures, events, and shared state as dependencies
-   - Be especially vigilant about hidden dependencies
+   - Be especially vigilant about hidden dependencies, such as passing around complex objects
 
 8. **Write Intentional Code**
 

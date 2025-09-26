@@ -7,7 +7,7 @@ A location-based discussion platform built as a Progressive Web App (PWA).
 Before setting up vex, ensure you have the following installed:
 
 ### 1. Node.js and npm
-vex requires Node.js 18+ (recommended: Node.js 22+)
+vex requires Node.js
 
 **Install Node.js using nvm (recommended):**
 ```bash
@@ -25,40 +25,12 @@ nvm use 22
 nvm alias default 22
 ```
 
-**Alternative installation methods:**
-- **macOS**: `brew install node`
-- **Ubuntu/Debian**: `sudo apt update && sudo apt install nodejs npm`
-- **Windows**: Download from [nodejs.org](https://nodejs.org/)
 
-Verify installation:
-```bash
-node --version  # Should show v22.x.x or higher
-npm --version   # Should show 10.x.x or higher
-```
 
-### 2. MongoDB
 vex uses MongoDB for data storage.
 
-**Option A: MongoDB Atlas (Cloud - Recommended for development)**
-1. Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster
-3. Get your connection string
-4. Set up environment variables (see Installation section)
 
-**Option B: Local MongoDB Installation**
-- **macOS**: `brew install mongodb-community`
-- **Ubuntu/Debian**: Follow [MongoDB Ubuntu installation guide](https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/)
-- **Windows**: Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
-
-**Option C: Docker (Included in project)**
-MongoDB is automatically set up when using the Docker setup below.
-
-### 3. Git
-- **macOS**: `brew install git` or install Xcode Command Line Tools
-- **Ubuntu/Debian**: `sudo apt install git`
-- **Windows**: Download from [git-scm.com](https://git-scm.com/)
-
-## 🚀 Installation
+## Installation
 
 ### 1. Clone the Repository
 ```bash
@@ -70,52 +42,20 @@ cd vex
 ```bash
 npm install
 ```
-
-### 3. Environment Setup
-Create a `.env` file in the root directory:
-```bash
-cp .env.example .env  # If .env.example exists, or create manually
-```
-
-Add the following environment variables to `.env`:
-```env
-# MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/vex
-# Or for MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/vex
-
 # JWT Secret (generate using the provided script)
-JWT_SECRET=your-super-secret-jwt-key
-
-# Optional: Default superadmin password
-SUPERADMIN_DEFAULT_PASSWORD=your-secure-password
-```
-
-### 4. Generate JWT Secret
 ```bash
-./generate_secret_JWT.sh
+sh generate_secret_JWT.sh
 ```
 
-### 5. Start the Application
+### Start the Application
 
-**Development mode (with auto-reload):**
 ```bash
 npm run dev
 ```
 
-**Production mode:**
-```bash
-npm start
-```
+The application will be available at `http://localhost:3005/vex`
 
-**Using Docker (includes MongoDB):**
-```bash
-npm run docker
-```
-
-The application will be available at `http://localhost:3005`
-
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 vex follows a **vertical full-stack organization** principle where features are organized as self-contained modules rather than traditional frontend/backend separation.
 

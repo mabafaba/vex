@@ -83,7 +83,7 @@ class VexBreadcrumbs extends HTMLElement {
     color: #333;
     text-decoration: none;
     cursor: pointer;
-    margin-right: 5px;
+    margin-left: 5px;
     padding: 4px 8px;
     background: rgb(224, 222, 253);
     border-radius: 11px;
