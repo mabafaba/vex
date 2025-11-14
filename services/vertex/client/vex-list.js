@@ -122,9 +122,10 @@ class VexList extends HTMLElement {
   }
 
   setupSocket () {
-    if (!this.socket) {
+    if (!this._socket) {
       if (!this.constructor.socket) {
         console.error('VexList Element: No socket instance set on the class. Set VexList.socket (on the class itself, not the object) before using.');
+        return;
       } else {
         this._socket = this.constructor.socket;
       }
@@ -307,6 +308,18 @@ class VexList extends HTMLElement {
     setTimeout(() => {
       listDiv.scrollTop = listDiv.scrollHeight;
     });
+  }
+
+  // Method to re-setup socket when it becomes available after login
+  reconnectSocket () {
+    console.log('VexList: Reconnecting socket');
+    this._socket = null; // Reset socket reference
+    this.setupSocket(); // Re-setup with new socket
+
+    // Re-join room if we have a parent vex
+    if (this._parentVex) {
+      this.joinRoom(this._parentVex);
+    }
   }
 }
 

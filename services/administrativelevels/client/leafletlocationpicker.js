@@ -1,4 +1,3 @@
-console.log('LeafletLocationPicker loaded');
 class LeafletLocationPicker extends HTMLElement {
   static get observedAttributes () {
     return ['mapwidth', 'mapheight', 'zoom', 'lat', 'lon'];
@@ -6,7 +5,6 @@ class LeafletLocationPicker extends HTMLElement {
 
   constructor () {
     super();
-    console.log('LeafletLocationPicker constructor');
     this.attachShadow({ mode: 'open' });
     this.shadowRoot.innerHTML = `
             <style>
@@ -19,16 +17,15 @@ class LeafletLocationPicker extends HTMLElement {
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
             <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         `;
-    console.log('LeafletLocationPicker created');
 
     const lat = parseFloat(this.getAttribute('lat')) || 51.505;
     const lon = parseFloat(this.getAttribute('lon')) || -0.09;
     const zoom = parseInt(this.getAttribute('zoom')) || 13;
 
     // Wait for the Leaflet script to load
-    console.log('starting map');
+
     this.map = L.map(this.shadowRoot.getElementById('locationpickermap')).setView([lat, lon], zoom);
-    console.log('map created', this.map);
+
     this.initializeMap();
   }
 

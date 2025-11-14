@@ -23,37 +23,23 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/vex/icons/ios/167.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/vex/icons/ios/180.png">
 
-    <!-- Include Socket.io client library with direct URL to ensure proper loading -->
-     <!-- instead, load from web 4.8.1-->
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-    <script>
-      // Add debugging for Socket.io connection
-      window.addEventListener("DOMContentLoaded", () => {
-        console.log(
-          "Checking if Socket.io is loaded:",
-          typeof io !== "undefined"
-        );
-      });
-      </script>
+
     
     <script src="/vex/utils/reactive.js"></script>
     <script src="/vex/utils/reactivestateelement.js"></script>
     <script src="/vex/utils/livemodelelement/livemodelelement.js"></script>
     
-    <script src="/vex/vertex/static/vexcomponent.js"></script>
+    <script src="/vex/vertex/static/vex-display.js"></script>
     <script src="/vex/vertex/static/stacked-buttons-ordinal-selection.js"></script>
-    <script src="/vex/vertex/static/vexinputcomponent.js"></script>
-    <script src="/vex/vertex/static/geoscaleinputcomponent.js"></script>
-    <script src="/vex/vertex/static/vexbreadcrumbs.js"></script>
-    <script src="/vex/vertex/static/vexlist.js"></script>
-    <script src="/vex/vertex/static/vexreactions.js"></script>
-    <script src="/vex/vertex/static/vexthread.js"></script>
-    <script src="/vex/vertex/static/sliding-page.js"></script>
-    <script src="/vex/vertex/static/vex-sliding-threads.js"></script>
-    <script src="/vex/vertex/static/ordinal-slider.js"></script>
+    <script src="/vex/vertex/static/vex-input.js"></script>
+    <script src="/vex/vertex/static/vex-breadcrumbs.js"></script>
+    <script src="/vex/vertex/static/vex-list.js"></script>
+    <script src="/vex/vertex/static/vex-reactions.js"></script>
+    <script src="/vex/vertex/static/vex-thread.js"></script>
     
-    <script src="/vex/vertex/static/vexsortcontrols.js"></script>
-    <script src="/vex/reactions/static/reactionbuttons.js"></script>
+    <script src="/vex/vertex/static/vex-sortcontrols.js"></script>
+    <script src="/vex/reactions/static/reaction-buttons.js"></script>
     <script src="/vex/user/static/authform.js"></script>
     <script src="/vex/user/static/userstatus.js"></script>
     <script src="/vex/administrative/static/leafletlocationpicker.js"></script>
@@ -61,11 +47,11 @@
     <!-- leaflet -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <script src="http://localhost:35729/livereload.js?snipver=1"></script>
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <!-- Main application entry point -->
-    <script src="/vex/vertex/static/app.js"></script>
+    <script src="/vex/vertex/static/sliding-page.js"></script>
+    <script src="/vex/vertex/static/vex-app.js"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
@@ -156,6 +142,7 @@
         height: 100%;
         margin: 0;
         padding: 0;
+        background: #00194e1f;
 
       }
 
@@ -288,29 +275,28 @@
     </style>
   </head>
   <body>
+    <vex-app></vex-app>
 
-    <!-- <div class="auth-buttons">
-      <a href="/login">Login</a>
-    </div> -->
-    <div class="user-status-container">
-     
-      <user-status
-        me-endpoint="/vex/user/me"
-        logout-endpoint="/vex/user/logout"
-        login-endpoint="/vex/user/login"
-        register-endpoint="/vex/user/register"
-      >
-      </user-status>
-    </div>
+    <style>
+      vex-app {
+        position: relative;
+        height: 100%;
+        width: 100%;
+      }
+      .socket-status {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #ff4444; /* Red when disconnected */
+        transition: background-color 0.3s ease;
+      }
 
-    <div class="main-container">
-
-    </div>
-
-    <!-- <div id="connection-status" style="position: fixed; bottom: 10px; right: 10px; padding: 5px; background: #f0f0f0; border: 1px solid #ccc;">
-        Socket.io: <span id="socket-status">Checking...</span>
-    </div> -->
-
-
+      .socket-status.connected {
+        background-color: #00C851; /* Green when connected */
+      }
+    </style>
   </body>
 </html>

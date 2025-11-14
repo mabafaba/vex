@@ -1,45 +1,44 @@
 // Service Worker for Vex PWA
-const CACHE_NAME = 'vex-v1.0.0';
-const STATIC_CACHE_NAME = 'vex-static-v1.0.0';
-const DYNAMIC_CACHE_NAME = 'vex-dynamic-v1.0.0';
+const CACHE_NAME = 'vex-v1.0.2';
+const STATIC_CACHE_NAME = 'vex-static-v1.0.2';
+const DYNAMIC_CACHE_NAME = 'vex-dynamic-v1.0.2';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
-  '/vex/',
-  '/vex/manifest.json',
-  '/vex/vertex/static/test.html',
-  '/vex/vertex/static/app.js',
-  '/vex/vertex/static/vexcomponent.js',
-  '/vex/vertex/static/vexlist.js',
-  '/vex/vertex/static/vexthread.js',
-  '/vex/vertex/static/sliding-page.js',
-  '/vex/vertex/static/vex-sliding-threads.js',
-  '/vex/vertex/static/socketmanager.js',
-  '/vex/utils/reactive.js',
-  '/vex/utils/reactivestateelement.js',
-  '/vex/utils/livemodelelement/livemodelelement.js',
-  '/vex/user/static/authform.js',
-  '/vex/user/static/userstatus.js',
-  '/vex/user/static/locationpickerdialog.js',
-  '/vex/administrative/static/leafletlocationpicker.js',
-  '/vex/reactions/static/reactionbuttons.js',
-  // PWA Icons
-  '/vex/icons/android/android-launchericon-48-48.png',
-  '/vex/icons/android/android-launchericon-72-72.png',
-  '/vex/icons/android/android-launchericon-96-96.png',
-  '/vex/icons/android/android-launchericon-144-144.png',
-  '/vex/icons/android/android-launchericon-192-192.png',
-  '/vex/icons/android/android-launchericon-512-512.png',
-  '/vex/icons/ios/32.png',
-  '/vex/icons/ios/152.png',
-  '/vex/icons/ios/167.png',
-  '/vex/icons/ios/180.png',
-  '/vex/icons/ios/256.png',
-  // External CDN resources
-  'https://cdn.socket.io/4.8.1/socket.io.min.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
+  // '/vex/',
+  // '/vex/manifest.json',
+  // '/vex/vertex/static/test.html',
+  // '/vex/vertex/static/app.js',
+  // '/vex/vertex/static/vexcomponent.js',
+  // '/vex/vertex/static/vexlist.js',
+  // '/vex/vertex/static/vexthread.js',
+  // '/vex/vertex/static/vex-sliding-threads.js',
+  // '/vex/vertex/static/socketmanager.js',
+  // '/vex/utils/reactive.js',
+  // '/vex/utils/reactivestateelement.js',
+  // '/vex/utils/livemodelelement/livemodelelement.js',
+  // '/vex/user/static/authform.js',
+  // '/vex/user/static/userstatus.js',
+  // '/vex/user/static/locationpickerdialog.js',
+  // '/vex/administrative/static/leafletlocationpicker.js',
+  // '/vex/reactions/static/reactionbuttons.js',
+  // // PWA Icons
+  // '/vex/icons/android/android-launchericon-48-48.png',
+  // '/vex/icons/android/android-launchericon-72-72.png',
+  // '/vex/icons/android/android-launchericon-96-96.png',
+  // '/vex/icons/android/android-launchericon-144-144.png',
+  // '/vex/icons/android/android-launchericon-192-192.png',
+  // '/vex/icons/android/android-launchericon-512-512.png',
+  // '/vex/icons/ios/32.png',
+  // '/vex/icons/ios/152.png',
+  // '/vex/icons/ios/167.png',
+  // '/vex/icons/ios/180.png',
+  // '/vex/icons/ios/256.png',
+  // // External CDN resources
+  // 'https://cdn.socket.io/4.8.1/socket.io.min.js',
+  // 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+  // 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  // 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
 ];
 
 // API endpoints that should be cached
@@ -90,6 +89,7 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache with network fallback
 self.addEventListener('fetch', (event) => {
+  console.log('fetch intercepted by service worker for', event.request.url);
   const { request } = event;
   const url = new URL(request.url);
 
@@ -117,19 +117,19 @@ self.addEventListener('fetch', (event) => {
 
 async function handleGetRequest (request, url) {
   // For API calls that should be cached
-  if (API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname))) {
-    return cacheFirst(request, DYNAMIC_CACHE_NAME);
-  }
+  // if (API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname))) {
+  //   return cacheFirst(request, DYNAMIC_CACHE_NAME);
+  // }
 
-  // For static assets
-  if (STATIC_ASSETS.some(asset => url.pathname === asset || url.href === asset)) {
-    return cacheFirst(request, STATIC_CACHE_NAME);
-  }
+  // // For static assets
+  // if (STATIC_ASSETS.some(asset => url.pathname === asset || url.href === asset)) {
+  //   return cacheFirst(request, STATIC_CACHE_NAME);
+  // }
 
-  // For Socket.io and other external resources
-  if (url.origin !== location.origin) {
-    return networkFirst(request, DYNAMIC_CACHE_NAME);
-  }
+  // // For Socket.io and other external resources
+  // if (url.origin !== location.origin) {
+  //   return networkFirst(request, DYNAMIC_CACHE_NAME);
+  // }
 
   // For everything else, try network first
   return networkFirst(request, DYNAMIC_CACHE_NAME);

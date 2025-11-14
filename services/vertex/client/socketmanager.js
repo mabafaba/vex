@@ -5,7 +5,7 @@
     this.connectionAttempts = 0;
     this.maxAttempts = 3;
     this.connectionListeners = new Set();
-  }
+  
 
   // Get or create socket connection
   getSocket () {

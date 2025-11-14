@@ -90,7 +90,7 @@ const findAdminBoundaries = async function (longitude, latitude) {
 
 // serve static files
 router.use('/static', express.static(path.join(__dirname, '../client')));
-console.log('/static maps to', path.join(__dirname, '../client'));
+
 /**
  * @route GET /api/admin-boundaries/lowest
  * @description Find the lowest (most specific) administrative boundary containing a point
@@ -99,7 +99,6 @@ console.log('/static maps to', path.join(__dirname, '../client'));
  * @returns {Object} The administrative boundary containing the point
  */
 router.get('/point', async (req, res) => {
-  console.log('router.get /point');
   try {
     const { lat, lng } = req.query;
 
@@ -229,8 +228,6 @@ router.get('/:id/name', async (req, res) => {
     });
   }
 });
-
-console.log('router', router);
 
 module.exports = {
   router

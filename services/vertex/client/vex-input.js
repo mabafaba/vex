@@ -2,6 +2,8 @@ class VexInputComponent extends HTMLElement {
   constructor () {
     super();
     this.attachShadow({ mode: 'open' });
+    this.lastEnterTime = 0;
+    this.enterDebounceDelay = 500; // 500ms debounce
 
     this.shadowRoot.innerHTML = `
             <style>
@@ -106,9 +108,15 @@ class VexInputComponent extends HTMLElement {
       this.hideInitialSendButton();
     });
 
-    // Add enter key handler
-    this.shadowRoot.querySelector('#vexContent').addEventListener('keypress', (e) => {
+    // Add keyboard event handler for input field
+    this.shadowRoot.querySelector('#vexContent').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
+        const now = Date.now();
+        if (now - this.lastEnterTime < this.enterDebounceDelay) {
+          return; // Ignore if too soon after last Enter
+        }
+        this.lastEnterTime = now;
+
         const content = this.shadowRoot.querySelector('#vexContent').value.trim();
         if (!content) {
           alert('Please write a message first');
@@ -122,6 +130,46 @@ class VexInputComponent extends HTMLElement {
         }
       }
     });
+
+    // Add global keyboard handler for when reach selector is visible
+    this.keyboardHandler = (e) => {
+      if (!this.isReachSelectorVisible()) {
+        return;
+      }
+
+      switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        this.hideReachSelector();
+        this.showInitialSendButton();
+        // Focus back on input field
+        this.shadowRoot.querySelector('#vexContent').focus();
+        break;
+
+      case 'ArrowUp':
+        e.preventDefault();
+        this.moveOrdinalSelection(-1);
+        break;
+
+      case 'ArrowDown':
+        e.preventDefault();
+        this.moveOrdinalSelection(1);
+        break;
+
+      case 'Enter':
+        e.preventDefault();
+        const now = Date.now();
+        if (now - this.lastEnterTime < this.enterDebounceDelay) {
+          return; // Ignore if too soon after last Enter
+        }
+        this.lastEnterTime = now;
+        this.sendVex();
+        break;
+      }
+    };
+
+    // Add the keyboard handler to the document
+    document.addEventListener('keydown', this.keyboardHandler);
   }
 
   hideInitialSendButton () {
@@ -173,11 +221,37 @@ class VexInputComponent extends HTMLElement {
     });
   }
 
+  disconnectedCallback () {
+    // Clean up the keyboard event listener
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+    }
+  }
+
   setOrdinalSelectorValues (values, labels, value) {
     const selector = this.shadowRoot.querySelector('#reachSelector');
     selector.setAttribute('values', JSON.stringify(values));
     selector.setAttribute('labels', JSON.stringify(labels));
     selector.setAttribute('value', value);
+  }
+
+  moveOrdinalSelection (direction) {
+    const selector = this.shadowRoot.querySelector('#reachSelector');
+    const values = JSON.parse(selector.getAttribute('values') || '[]');
+    const currentValue = selector.value;
+    const currentIndex = values.indexOf(currentValue);
+
+    if (currentIndex === -1) {
+      // If no current selection, start at the first item
+      const newIndex = direction > 0 ? 0 : values.length - 1;
+      selector.value = values[newIndex];
+    } else {
+      // Move up or down
+      const newIndex = currentIndex + direction;
+      if (newIndex >= 0 && newIndex < values.length) {
+        selector.value = values[newIndex];
+      }
+    }
   }
 
   // listen for changes in the parent-vex attribute

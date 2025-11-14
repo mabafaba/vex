@@ -32,17 +32,17 @@ vex uses MongoDB for data storage.
 
 ## Installation
 
-### 1. Clone the Repository
+### Clone the Repository
 ```bash
 git clone https://github.com/your-username/vex.git
 cd vex
 ```
 
-### 2. Install Dependencies
+###  Install Dependencies
 ```bash
 npm install
 ```
-# JWT Secret (generate using the provided script)
+### Generate JWT Secret (generate using the provided script)
 ```bash
 sh generate_secret_JWT.sh
 ```
@@ -63,7 +63,7 @@ vex follows a **vertical full-stack organization** principle where features are 
 - **Vanilla-first approach**: Minimal external dependencies
 - **Tree dependency structure**: No circular dependencies
 - **Feature-based organization**: Related code stays together
-- **Web Components**: Native custom elements without framework overhead
+
 
 ### Project Structure
 ```
@@ -100,6 +100,20 @@ server.js
 ├── administrativelevels (geodata)
 └── database
 ```
+### vex service web component hierarchy
+   ```
+   vex-app
+   |-- user-status (login/logout)
+   |-- location-picker-dialog (select location)
+   |-- vex-thread (main thread)
+   |   |-- vex-breadcrumbs (breadcrumb navigation)
+   |   |-- vex-display (shows a single post content & reaction buttons)
+   |   |   |-- vex-reactions (reaction buttons)
+   |   |-- vex-input (text area to create new post)
+   |   |-- vex-list (list of posts / vex-display's)
+
+   ```
+
 
 ## 🌟 PWA Features
 
@@ -119,25 +133,7 @@ Users can install the app by:
 2. Looking for the "Install App" button that appears
 3. Or using the browser's "Add to Home Screen" option
 
-## 🧪 Development Tools
-
-### Available Scripts
-```bash
-npm run dev          # Start development server with auto-reload
-npm run watch        # Start with browser-sync for live reloading
-npm run lint         # Run ESLint with auto-fix
-npm run pwa-audit    # Audit PWA compliance with Lighthouse
-npm run docker       # Build and run with Docker
-npm run deploy       # Production deployment (git pull + docker)
-```
-
-### PWA Development
-To audit PWA compliance:
-```bash
-npm run pwa-audit
-```
-
-## 🗺️ Geographic Data Setup
+## Geographic Data Setup
 
 vex supports administrative boundaries for location-based discussions. To set up geodata:
 

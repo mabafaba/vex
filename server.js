@@ -192,7 +192,7 @@ io.on('connection',  (socket) => {
   // Join a room for a specific vex thread
   socket.on('joinVexRoom', async (vexId) => {
     // Only allow authenticated users to join rooms
-
+    console.log('joining vex room received on server', vexId);
     if (!socket.user) {
       socket.emit('error', { message: 'Not authenticated' });
       return;
@@ -208,8 +208,11 @@ io.on('connection',  (socket) => {
 
     // room id is vex-${vexId}-location-${location}
     // join each location
-    socket.user.location.forEach((location) => {
-      console.log('joining room', `vex-${vexId}-location-${location._id}`, location.properties.name);
+    socket.user.location.forEach(async (location) => {
+      //console.log('joining room', `vex-${vexId}-location-${location._id}`, location.properties.name);
+      const vex = await vertexService.Vertex.findById(vexId);
+
+      console.log('subscribing', vex.content, ' - ', location.properties.name);
       socket.join(`vex-${vexId}-location-${location._id}`);
     });
   });
@@ -223,7 +226,9 @@ io.on('connection',  (socket) => {
       return;
     }
     // leave each location
-    socket.user.location.forEach((location) => {
+    socket.user.location.forEach(async (location) => {
+      const vex = await vertexService.Vertex.findById(vexId);
+      console.log('unsubscribing', vex.content, ' - ', location.properties.name);
       socket.leave(`vex-${vexId}-location-${location._id}`);
     });
   });

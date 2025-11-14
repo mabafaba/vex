@@ -82,32 +82,86 @@ class VexThread extends HTMLElement {
         <vex-input id="vex-input"></vex-input>
       </div>
     `;
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners () {
     // Listen for breadcrumb navigation
-    this.shadowRoot
-      .getElementById('breadcrumbs')
-      .addEventListener('crumb-click', (event) => {
-        const clickedVexId = event.detail.vexId;
-        this.setAttribute('vex-id', clickedVexId);
-        // Optionally update URL
+
+    // Listen for vex-main-click events (bubbled up from child components)
+    this.addEventListener('vex-main-click', (event) => {
+      // do nothing if the vex is already open
+      if (this.getAttribute('vex-id') === event.detail.vexId) {
+        return;
+      }
+
+      // Set the vex-id on this thread
+      this.setAttribute('vex-id', event.detail.vexId);
+
+      // set vex id as ?id= in the url
+      // console.log('setting vex id in url', vexId);
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('id', event.detail.vexId);
+      window.history.pushState({}, '', `?${urlParams.toString()}`);
+
+      // Get main container for slide animation
+      const mainContainer = document.querySelector('.main-container');
+      if (mainContainer && typeof window.slideNext === 'function') {
+        window.slideNext(mainContainer, 300, () => {
+        // Animation callback
+        });
+      }
+    });
+
+    // Listen for breadcrumb-click events (bubbled up from child components)
+    this.addEventListener('breadcrumb-click', (event) => {
+      // console.log('Breadcrumb clicked:', vexId);
+
+      // Get main container for slide animation
+      const mainContainer = document.querySelector('.main-container');
+      if (mainContainer && typeof window.slidePrev === 'function') {
+        window.slidePrev(this, 400, () => {
+          this.setAttribute('vex-id', event.detail.vexId);
+        });
+      } else {
+      // Fallback if slide functions aren't available
+        this.setAttribute('vex-id', event.detail.vexId);
+        // Update URL
         const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('id', clickedVexId);
+        newUrl.searchParams.set('id', event.detail.vexId);
         window.history.pushState({}, '', newUrl);
-      });
-    // Listen for clicks on vex-list items (if you emit events from vex-list)
-    // You may need to forward events from vex-display in vex-list for this to work
-    // this.shadowRoot.getElementById('vex-list').onClick = (event) => {
-    //   if (event && event.detail && event.detail.vexId) {
-    //     this.setAttribute('vex-id', event.detail.vexId);
-    //     const newUrl = new URL(window.location.href);
-    //     newUrl.searchParams.set('id', event.detail.vexId);
-    //     window.history.pushState({}, '', newUrl);
-    //   }
-    // };
+      }
+    });
+
     // add event listener for vex-list-unauthorized
     const vexList = this.shadowRoot.getElementById('vex-list');
     vexList.addEventListener('vex-list-unauthorized', () => {
       this.shadowRoot.innerHTML = '';
     });
+  }
+
+  /**
+   * Refresh method to reload the thread (replaces reloadMainThread functionality)
+   */
+  refresh () {
+    // console.log('vex-thread refresh');
+
+    // Update location picker dialog if it exists
+    const locationPickerDialog = document.querySelector('location-picker-dialog');
+    if (locationPickerDialog && typeof locationPickerDialog.loadCurrentLocation === 'function') {
+      locationPickerDialog.loadCurrentLocation();
+    }
+
+    // Refresh the current thread by re-setting the vex-id
+    const currentVexId = this.getAttribute('vex-id');
+    if (currentVexId) {
+      // Clear the vex-id to force a refresh
+      this.setAttribute('vex-id', '');
+      setTimeout(() => {
+        this.setAttribute('vex-id', currentVexId);
+      }, 0);
+    }
   }
 
   async updateAll () {
