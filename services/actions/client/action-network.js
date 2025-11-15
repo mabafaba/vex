@@ -17,6 +17,16 @@ class Node {
     this.swingAmplitude = 0.5 + Math.random() * 1; // Swing amplitude between 0.5 and 1.5 degrees
     this.swingSpeed = 0.5 + Math.random() * 0.5; // Swing speed between 0.5 and 1.0
     this.swingPhase = Math.random() * Math.PI * 2; // Random starting phase
+    this.isDragging = false;
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.hasMoved = false; // Track if mouse moved during mousedown to distinguish click from drag
+    this.weight = 1;
+    this.isRoot = false; // Whether this is a root node
+    this.anchorX = null; // Anchor point X (null if not root)
+    this.anchorY = null; // Anchor point Y (null if not root)
   }
 
   formatDate (dateString) {
@@ -25,6 +35,9 @@ class Node {
     }
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  applyGravity (gravity) {
+    this.applyForce(0, gravity * this.weight);
   }
 
   createElement (container) {
@@ -63,17 +76,113 @@ class Node {
       this.addGroupFields(alwaysVisible, detailsContainer);
     }
 
-    // Add click handler to toggle details
+    // Add drag handlers
+    selection.on('mousedown', (event) => {
+      event.stopPropagation();
+      this.startDrag(event);
+    });
+
+    // Add click handler to toggle details (only if not dragged)
     selection.on('click', (event) => {
       event.stopPropagation();
-      const isExpanded = selection.classed('expanded');
-      selection.classed('expanded', !isExpanded);
+      // Only toggle if we didn't drag
+      if (!this.hasMoved) {
+        const isExpanded = selection.classed('expanded');
+        selection.classed('expanded', !isExpanded);
+      }
+      this.hasMoved = false;
     });
 
     this.element = selection.node();
     const rect = this.element.getBoundingClientRect();
     this.width = rect.width || 120;
     this.height = rect.height || 40;
+  }
+
+  startDrag (event) {
+    if (!this.element) {
+      return;
+    }
+
+    this.isDragging = true;
+    this.hasMoved = false;
+    const rect = this.element.getBoundingClientRect();
+
+    // Calculate offset from mouse to node top-left corner
+    this.dragOffsetX = event.clientX - rect.left;
+    this.dragOffsetY = event.clientY - rect.top;
+
+    // Store initial position
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+
+    // Add dragging class for styling
+    if (this.element) {
+      this.element.classList.add('dragging');
+    }
+
+    // Store reference to this node for global handlers
+    if (this.element.parentElement) {
+      this.element.parentElement._draggedNode = this;
+    }
+  }
+
+  updateDrag (clientX, clientY) {
+    if (!this.isDragging || !this.element) {
+      return;
+    }
+
+    const containerRect = this.element.parentElement.getBoundingClientRect();
+
+    // Calculate new position
+    let newX = clientX - containerRect.left - this.dragOffsetX;
+    let newY = clientY - containerRect.top - this.dragOffsetY;
+
+    // Constrain to bounds
+    const { width, height } = this.getContainerDimensions();
+    newX = Math.max(0, Math.min(newX, width - this.width));
+    newY = Math.max(0, Math.min(newY, height - this.height));
+
+    // Update position
+    this.x = newX;
+    this.y = newY;
+    this.vx = 0; // Reset velocity when dragging
+    this.vy = 0;
+
+    // Render immediately for smooth dragging
+    const time = Date.now() / 1000;
+    this.render(time);
+
+    // Check if mouse has moved significantly
+    const moveDistance = Math.sqrt(
+      Math.pow(clientX - this.dragStartX, 2) + Math.pow(clientY - this.dragStartY, 2)
+    );
+    if (moveDistance > 5) {
+      this.hasMoved = true;
+    }
+  }
+
+  endDrag () {
+    if (this.isDragging) {
+      this.isDragging = false;
+      if (this.element) {
+        this.element.classList.remove('dragging');
+      }
+      if (this.element && this.element.parentElement) {
+        this.element.parentElement._draggedNode = null;
+      }
+    }
+  }
+
+  getContainerDimensions () {
+    if (!this.element || !this.element.parentElement) {
+      return { width: 600, height: 600 };
+    }
+    const container = this.element.parentElement;
+    return {
+      width: container.offsetWidth || container.clientWidth || 600,
+      height: container.offsetHeight || container.clientHeight || 600
+    };
   }
 
   addActionFields (alwaysVisible, detailsContainer) {
@@ -99,6 +208,9 @@ class Node {
     alwaysVisible.append('button')
       .attr('class', 'node-action-button join')
       .text('Join')
+      .on('mousedown', (event) => {
+        event.stopPropagation(); // Prevent drag from starting
+      })
       .on('click', (event) => {
         event.stopPropagation();
         this.handleJoin(data);
@@ -135,6 +247,9 @@ class Node {
     alwaysVisible.append('button')
       .attr('class', 'node-action-button contact')
       .text('Contact')
+      .on('mousedown', (event) => {
+        event.stopPropagation(); // Prevent drag from starting
+      })
       .on('click', (event) => {
         event.stopPropagation();
         this.handleContact(data);
@@ -290,13 +405,14 @@ class Network {
     this.nodes = nodes;
     this.edges = edges;
     this.centerAttractionStrength = 0.0;
-    this.collisionRepulsionStrength = 0.01;
+    this.collisionRepulsionStrength = 0.00001; // Strong repulsion force for overlapping nodes
     this.collisionPadding = 10;
-    this.edgeAttractionStrength = 0.001;
+    this.edgeAttractionStrength = 0.1;
     this.unconnectedRepulsionStrength = 0.001;
-    this.idealEdgeLength = 200;
-    this.maxSpeed = 2;
-    this.damping = 0.9;
+    this.idealEdgeLength = 250;
+    this.maxSpeed = 20;
+    this.damping = 0.95;
+    this.gravity = 0.1;
     this.animationId = null;
     this.buildConnectionMap();
     this.createEdgesSVG();
@@ -363,32 +479,65 @@ class Network {
   }
 
   applyEdgeAttraction (node) {
-    // Attract to connected nodes
+    // Attract to connected nodes (like a rope/thread)
     const connectedIds = this.connections.get(node.id);
-    if (!connectedIds) {
-      return;
+    const nodeCenter = node.getCenter();
+    const maxRopeLength = this.idealEdgeLength; // Maximum length before rope becomes taut
+
+    // Apply attraction to regular connected nodes
+    if (connectedIds) {
+      connectedIds.forEach(connectedId => {
+        const connectedNode = this.nodes.find(n => n.id === connectedId);
+        if (!connectedNode || !connectedNode.element) {
+          return;
+        }
+
+        const otherCenter = connectedNode.getCenter();
+        const dx = otherCenter.x - nodeCenter.x;
+        const dy = otherCenter.y - nodeCenter.y;
+        const distance = this.dist(nodeCenter.x, nodeCenter.y, otherCenter.x, otherCenter.y);
+
+        if (distance > 0) {
+          // Rope behavior: strong force only when stretched beyond max length
+          if (distance > maxRopeLength) {
+            // Rope is taut - apply strong force to pull nodes together
+            const stretch = distance - maxRopeLength;
+            const strength = this.edgeAttractionStrength * stretch;
+            node.applyForce((dx / distance) * strength, (dy / distance) * strength);
+          } else {
+            // Rope is slack - apply minimal or no force
+            // Optional: very weak force to gently bring them closer if desired
+            const slack = maxRopeLength - distance;
+            const minStrength = this.edgeAttractionStrength * 0.01; // 1% of normal strength when slack
+            const strength = minStrength * slack * 0.1; // Very weak attraction when slack
+            node.applyForce((dx / distance) * strength, (dy / distance) * strength);
+          }
+        }
+      });
     }
 
-    const nodeCenter = node.getCenter();
-
-    connectedIds.forEach(connectedId => {
-      const connectedNode = this.nodes.find(n => n.id === connectedId);
-      if (!connectedNode || !connectedNode.element) {
-        return;
-      }
-
-      const otherCenter = connectedNode.getCenter();
-      const dx = otherCenter.x - nodeCenter.x;
-      const dy = otherCenter.y - nodeCenter.y;
-      const distance = this.dist(nodeCenter.x, nodeCenter.y, otherCenter.x, otherCenter.y);
+    // Apply attraction to anchor point for root nodes
+    if (node.isRoot && node.anchorX !== null && node.anchorY !== null) {
+      const dx = node.anchorX - nodeCenter.x;
+      const dy = node.anchorY - nodeCenter.y;
+      const distance = this.dist(nodeCenter.x, nodeCenter.y, node.anchorX, node.anchorY);
 
       if (distance > 0) {
-        // Attraction force proportional to distance from ideal length
-        const diff = distance - this.idealEdgeLength;
-        const strength = this.edgeAttractionStrength * diff;
-        node.applyForce((dx / distance) * strength, (dy / distance) * strength);
+        // Rope behavior: strong force only when stretched beyond max length
+        if (distance > maxRopeLength) {
+          // Rope is taut - apply strong force to pull node towards anchor
+          const stretch = distance - maxRopeLength;
+          const strength = this.edgeAttractionStrength * stretch;
+          node.applyForce((dx / distance) * strength, (dy / distance) * strength);
+        } else {
+          // Rope is slack - apply minimal or no force
+          const slack = maxRopeLength - distance;
+          const minStrength = this.edgeAttractionStrength * 0.01;
+          const strength = minStrength * slack * 0.1;
+          node.applyForce((dx / distance) * strength, (dy / distance) * strength);
+        }
       }
-    });
+    }
   }
 
   applyUnconnectedRepulsion (node) {
@@ -433,19 +582,53 @@ class Network {
       const minDistX = nodeHalf.width + otherHalf.width + this.collisionPadding;
       const minDistY = nodeHalf.height + otherHalf.height + this.collisionPadding;
 
+      // Check if nodes are overlapping
       if (Math.abs(dx) < minDistX && Math.abs(dy) < minDistY) {
-        if (distance > 0) {
-          const overlap = Math.min(minDistX - Math.abs(dx), minDistY - Math.abs(dy));
-          if (overlap > 0) {
-            const force = this.collisionRepulsionStrength * overlap;
-            node.applyForce((dx / distance) * force, (dy / distance) * force);
+        // Calculate overlap amounts
+        const overlapX = minDistX - Math.abs(dx);
+        const overlapY = minDistY - Math.abs(dy);
+
+        // Use the maximum overlap to determine repulsion strength
+        const overlap = Math.max(overlapX, overlapY);
+
+        if (overlap > 0 && distance > 0) {
+          // Calculate strong repulsion force proportional to overlap
+          // Force increases with overlap amount
+          const forceStrength = this.collisionRepulsionStrength * overlap * overlap; // Quadratic for stronger response
+
+          // Normalize direction vector
+          const dirX = dx / distance;
+          let dirY = dy / distance;
+
+          // cancel out y direction
+          dirY = 0;
+          // Apply repulsion force to this node (away from other node)
+          // If other node is being dragged, apply stronger force to this node
+          if (otherNode.isDragging) {
+            node.applyForce(dirX * forceStrength * 2, dirY * forceStrength * 2);
+          } else if (node.isDragging) {
+            // If this node is being dragged, apply force to other node
+            otherNode.applyForce(-dirX * forceStrength * 2, -dirY * forceStrength * 2);
+          } else {
+            // Apply forces to both nodes (equal and opposite)
+            node.applyForce(dirX * forceStrength, dirY * forceStrength);
+            otherNode.applyForce(-dirX * forceStrength, -dirY * forceStrength);
           }
-        } else {
+        } else if (overlap > 0 && distance === 0) {
+          // Nodes are exactly on top of each other, apply random repulsion
           const angle = Math.random() * Math.PI * 2;
-          node.applyForce(
-            Math.cos(angle) * this.collisionRepulsionStrength * 10,
-            Math.sin(angle) * this.collisionRepulsionStrength * 10
-          );
+          const forceStrength = this.collisionRepulsionStrength * overlap * overlap;
+          const dirX = Math.cos(angle);
+          const dirY = Math.sin(angle);
+
+          if (otherNode.isDragging) {
+            node.applyForce(dirX * forceStrength * 2, dirY * forceStrength * 2);
+          } else if (node.isDragging) {
+            otherNode.applyForce(-dirX * forceStrength * 2, -dirY * forceStrength * 2);
+          } else {
+            node.applyForce(dirX * forceStrength, dirY * forceStrength);
+            otherNode.applyForce(-dirX * forceStrength, -dirY * forceStrength);
+          }
         }
       }
     });
@@ -467,20 +650,44 @@ class Network {
         return;
       }
 
+      // Skip physics for nodes being dragged
+      if (node.isDragging) {
+        node.render(time);
+        return;
+      }
+
       node.resetAcceleration();
       this.applyCenterAttraction(node, centerX, centerY);
       this.applyEdgeAttraction(node);
       this.applyUnconnectedRepulsion(node);
+      node.applyGravity(this.gravity);
+      // Handle collisions before position update (apply strong repulsion forces)
       this.handleCollisions(node);
       node.updateVelocity(this.damping, this.maxSpeed);
       node.updatePosition();
       node.updateDimensions();
       node.constrainToBounds(width, height);
+      // Update anchor point position for root nodes (X follows node, Y is fixed)
+      this.updateAnchorPoint(node, width);
       node.render(time);
     });
 
     // Update edge positions
     this.updateEdges();
+  }
+
+  updateAnchorPoint (node, width) {
+    if (node.isRoot && node.anchorX !== null && node.anchorY !== null) {
+      // Anchor Y is fixed at top of canvas
+      node.anchorY = 20; // Fixed Y position at top (with some padding)
+      // Anchor X follows the node's X position (with some smoothing/damping)
+      const nodeCenter = node.getCenter();
+      const targetX = nodeCenter.x;
+      // Smoothly move anchor X towards node X (damping factor for smooth following)
+      node.anchorX = node.anchorX * 0.7 + targetX * 0.3;
+      // Constrain anchor X to canvas bounds
+      node.anchorX = Math.max(0, Math.min(node.anchorX, width));
+    }
   }
 
   updateEdges () {
@@ -491,6 +698,36 @@ class Network {
     const containerRect = this.container.getBoundingClientRect();
 
     this.edgeSelection.each(function (edge) {
+      // Handle anchor edges (from anchor point to root node)
+      if (edge.isAnchor && edge.source === edge.target) {
+        const node = edge.source;
+        if (!node.element || !node.isRoot || node.anchorX === null || node.anchorY === null) {
+          return;
+        }
+
+        const nodeRect = node.element.getBoundingClientRect();
+        const x1 = node.anchorX; // Anchor point X (relative to container)
+        const y1 = node.anchorY; // Anchor point Y (relative to container)
+        const x2 = nodeRect.left - containerRect.left + nodeRect.width / 2;
+        const y2 = nodeRect.top - containerRect.top + nodeRect.height / 2;
+
+        // Calculate control point for hanging rope effect (sag downward)
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const sag = distance * 0.2; // Sag amount proportional to distance
+        const controlY = midY + sag;
+
+        // Create quadratic Bezier curve path (hanging rope)
+        const path = `M ${x1} ${y1} Q ${midX} ${controlY} ${x2} ${y2}`;
+
+        // eslint-disable-next-line no-undef
+        d3.select(this)
+          .attr('d', path);
+        return;
+      }
+
+      // Handle regular edges
       const sourceNode = edge.source;
       const targetNode = edge.target;
 
@@ -591,12 +828,23 @@ class ActionNetwork extends HTMLElement {
         }
         .node {
           position: absolute;
-          cursor: pointer;
+          cursor: move;
           border: 2px solid #8b0000;
           border-radius: 4px;
           padding: 8px 12px;
           min-width: 120px;
           max-width: 250px;
+          user-select: none;
+          color: #fff;
+        }
+        .node.dragging {
+          cursor: grabbing;
+          z-index: 1000;
+          opacity: 0.9;
+        }
+        .node:hover {
+          cursor: grab;
+        }
           text-align: left;
           font-size: 11px;
           color: #fff;
@@ -610,8 +858,8 @@ class ActionNetwork extends HTMLElement {
         }
         .node:hover {
           box-shadow: 0 4px 8px rgba(138, 43, 226, 0.5);
-          z-index: 10;
-          opacity: 1;
+          z-index: 1000;
+          opacity: 1 !important;
         }
         .node-title {
           font-weight: bold;
@@ -697,12 +945,12 @@ class ActionNetwork extends HTMLElement {
           border-color: #8b0000;
         }
         .node-action {
-          background: rgba(138, 43, 226, 0.2);
+          background: rgba(80, 18, 137, 0.8);
           border-color: #8b0000;
           border-style: dashed;
         }
         .node-group {
-          background: rgba(138, 43, 226, 0.3);
+          background: rgba(67, 20, 111, 0.8);
           border-color: #8a2be2;
           border-style: dotted;
           border-width: 2px;
@@ -729,6 +977,12 @@ class ActionNetwork extends HTMLElement {
           stroke-dasharray: 8,4;
         }
         .edge-partof {
+          stroke: #8b0000;
+          stroke-opacity: 0.6;
+          stroke-width: 2;
+          stroke-dasharray: 4,4;
+        }
+        .edge-anchor {
           stroke: #8b0000;
           stroke-opacity: 0.6;
           stroke-width: 2;
@@ -936,6 +1190,34 @@ class ActionNetwork extends HTMLElement {
       }
     });
 
+    // Identify root nodes and set up anchor points
+    // Root nodes: groups with no partOf, actions with no organisers and no partOf
+    const rootNodes = [];
+    nodes.forEach(node => {
+      const isGroupRoot = node.type === 'group' && (!node.data.partOf || node.data.partOf.length === 0);
+      const isActionRoot = node.type === 'action' &&
+        (!node.data.organisers || node.data.organisers.length === 0) &&
+        (!node.data.partOf || node.data.partOf.length === 0);
+
+      if (isGroupRoot || isActionRoot) {
+        node.isRoot = true;
+        const nodeCenter = node.getCenter();
+        node.anchorX = nodeCenter.x; // Initialize anchor X at node's X position
+        node.anchorY = 20; // Fixed Y at top of canvas
+        rootNodes.push(node);
+      }
+    });
+
+    // Add anchor edges for root nodes (edge from anchor point to node)
+    rootNodes.forEach(rootNode => {
+      edges.push({
+        source: rootNode, // The anchor point is part of the node
+        target: rootNode, // Self-reference to indicate anchor edge
+        type: 'anchor',
+        isAnchor: true // Flag to identify anchor edges
+      });
+    });
+
     // Create Network instance and start animation
     this.network = new Network(container, nodes, edges);
     this.network.start();
@@ -948,6 +1230,23 @@ class ActionNetwork extends HTMLElement {
     container.addEventListener('group-contact', (event) => {
       this.handleGroupContact(event.detail.group);
     });
+
+    // Add global drag handlers
+    this.handleMouseMove = (event) => {
+      if (container._draggedNode) {
+        container._draggedNode.updateDrag(event.clientX, event.clientY);
+      }
+    };
+
+    this.handleMouseUp = () => {
+      if (container._draggedNode) {
+        container._draggedNode.endDrag();
+      }
+    };
+
+    // Use document to handle mouse events even if cursor leaves container
+    document.addEventListener('mousemove', this.handleMouseMove);
+    document.addEventListener('mouseup', this.handleMouseUp);
   }
 
   handleActionJoin (action) {
@@ -975,6 +1274,14 @@ class ActionNetwork extends HTMLElement {
   disconnectedCallback () {
     if (this.network) {
       this.network.stop();
+    }
+
+    // Remove global drag handlers
+    if (this.handleMouseMove) {
+      document.removeEventListener('mousemove', this.handleMouseMove);
+    }
+    if (this.handleMouseUp) {
+      document.removeEventListener('mouseup', this.handleMouseUp);
     }
   }
 }
