@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Actions & Groups - Vex</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: #f5f5f5;
+        padding: 20px;
+      }
+      
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+      }
+      
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #ddd;
+      }
+      
+      .tab {
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #666;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+      }
+      
+      .tab:hover {
+        color: #007bff;
+      }
+      
+      .tab.active {
+        color: #007bff;
+        border-bottom-color: #007bff;
+        font-weight: bold;
+      }
+      
+      .tab-content {
+        display: none;
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+      
+      .section {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      .section h2 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Actions & Groups</h1>
+      
+      <div class="tabs">
+        <button class="tab active" data-tab="create">Create</button>
+        <button class="tab" data-tab="timeline">Timeline</button>
+        <button class="tab" data-tab="network">Network</button>
+        <button class="tab" data-tab="map">Map</button>
+      </div>
+      
+      <div id="create-tab" class="tab-content active">
+        <div class="section">
+          <h2>Create Action</h2>
+          <action-form></action-form>
+        </div>
+        
+        <div class="section">
+          <h2>Create Group</h2>
+          <group-form></group-form>
+        </div>
+      </div>
+      
+      <div id="timeline-tab" class="tab-content">
+        <div class="section">
+          <h2>Action Timeline</h2>
+          <action-timeline></action-timeline>
+        </div>
+      </div>
+      
+      <div id="network-tab" class="tab-content">
+        <div class="section">
+          <h2>Action & Group Network</h2>
+          <action-network></action-network>
+        </div>
+      </div>
+      
+      <div id="map-tab" class="tab-content">
+        <div class="section">
+          <h2>Action & Group Map</h2>
+          <action-map></action-map>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Load Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    
+    <!-- Load location picker component -->
+    <script type="module" src="/vex/administrative/static/leafletlocationpicker.js"></script>
+    
+    <!-- Load action location picker -->
+    <script type="module" src="/vex/actions/static/action-location-picker.js"></script>
+    
+    <!-- Load action service components -->
+    <script type="module" src="/vex/actions/static/action-form.js"></script>
+    <script type="module" src="/vex/actions/static/group-form.js"></script>
+    <script type="module" src="/vex/actions/static/action-timeline.js"></script>
+    <script type="module" src="/vex/actions/static/action-network.js"></script>
+    <script type="module" src="/vex/actions/static/action-map.js"></script>
+    
+    <script>
+      // Tab switching
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const tabName = tab.dataset.tab;
+          
+          // Update active tab
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          
+          // Update active content
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          const activeTab = document.getElementById(`${tabName}-tab`);
+          activeTab.classList.add('active');
+          
+          // If switching to map tab, resize the map
+          if (tabName === 'map') {
+            setTimeout(() => {
+              const actionMap = activeTab.querySelector('action-map');
+              if (actionMap && actionMap.resizeMap) {
+                actionMap.resizeMap();
+              }
+            }, 100);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
+

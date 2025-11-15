@@ -26,6 +26,7 @@ const io = require('./services/utils/io')(server);
 const reactionsService = require('./services/reactions');
 const vertexService = require('./services/vertex');
 const remotetouchService = require('./services/remotetouch');
+const actionsService = require('./services/actions');
 
 const administrativeLevelsService = require('./services/administrativelevels').router;
 
@@ -75,6 +76,12 @@ const authenticateSocket = async (socket, next) => {
 io.use(authenticateSocket);
 
 app.use(cookieParser());
+
+// Apply higher limit for actions and groups routes (for image uploads)
+app.use('/vex/actions', express.json({ limit: '12mb' }));
+app.use('/vex/groups', express.json({ limit: '12mb' }));
+
+// Default limit for other routes
 app.use(express.json());
 
 // ...
@@ -107,6 +114,14 @@ app.use('/vex/reactions', authenticate, reactionsService.router);
 app.use('/vex/vertex', authenticate, authorize, vertexService.router);
 
 app.use('/vex/remotetouch', remotetouchService.router);
+
+app.use('/vex/actions', authenticate, actionsService.actionRouter);
+app.use('/vex/groups', authenticate, actionsService.groupRouter);
+
+// Serve actions service UI
+app.get('/vex/actions-ui', authenticate, (req, res) => {
+  res.sendFile(path.join(__dirname, 'services/actions/client/index.html'));
+});
 
 // on logout, end all socket interactions
 app.get('/vex/user/logout', authenticate, (req, res, next) => {
