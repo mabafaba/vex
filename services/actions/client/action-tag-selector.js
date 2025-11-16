@@ -60,6 +60,15 @@ class ActionTagSelector extends TagSelectorBase {
   setSelectedActions (actions) {
     this.setSelectedItems(actions);
   }
+
+  handleEditClick (item) {
+    // Emit a specific event for action editing
+    this.dispatchEvent(new CustomEvent('edit-action', {
+      bubbles: true,
+      composed: true,
+      detail: { actionId: item._id, action: item }
+    }));
+  }
 }
 
 customElements.define('action-tag-selector', ActionTagSelector);

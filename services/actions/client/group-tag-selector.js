@@ -56,6 +56,15 @@ class GroupTagSelector extends TagSelectorBase {
   setSelectedGroups (groups) {
     this.setSelectedItems(groups);
   }
+
+  handleEditClick (item) {
+    // Emit a specific event for group editing
+    this.dispatchEvent(new CustomEvent('edit-group', {
+      bubbles: true,
+      composed: true,
+      detail: { groupId: item._id, group: item }
+    }));
+  }
 }
 
 customElements.define('group-tag-selector', GroupTagSelector);

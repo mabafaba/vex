@@ -228,9 +228,11 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const places = await Place.find()
-    // never turn on populating the geometry here, it's too slow
+      // Exclude geometry and nominatimData to reduce payload size (15MB+ with geometries)
+      .select('-geometry -properties.nominatimData')
       .populate('properties.displayName properties.osmId properties.osmType')
       .populate('properties.createdBy', 'username')
+      .populate('parents', 'properties.displayName') // Only get displayName for parents, not geometry
       .sort({ createdAt: -1 });
 
     res.status(200).json(places);
@@ -244,7 +246,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const place = await Place.findById(req.params.id)
-      .populate('parents', 'properties.displayName geometry properties.osmId properties.osmType')
+      .populate( 'properties.displayName properties.osmId properties.osmType')
       .populate('properties.createdBy', 'username');
 
     if (!place) {

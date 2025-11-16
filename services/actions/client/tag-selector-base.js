@@ -147,6 +147,9 @@ class TagSelectorBase extends HTMLElement {
           padding: 8px 12px;
           cursor: pointer;
           border-bottom: 1px solid #f0f0f0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
         .suggestion-item:hover {
           background: #f5f5f5;
@@ -164,6 +167,40 @@ class TagSelectorBase extends HTMLElement {
         }
         .suggestion-item.highlighted:hover {
           background: #0056b3;
+        }
+        .suggestion-content {
+          flex: 1;
+        }
+        .suggestion-actions {
+          display: flex;
+          gap: 4px;
+          margin-left: 8px;
+        }
+        .edit-btn {
+          background: #28a745;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          font-size: 12px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .suggestion-item:hover .edit-btn {
+          opacity: 1;
+        }
+        .suggestion-item.highlighted .edit-btn {
+          opacity: 1;
+        }
+        .edit-btn:hover {
+          background: #218838;
+        }
+        .edit-btn:active {
+          background: #1e7e34;
         }
         .no-suggestions {
           padding: 8px 12px;
@@ -276,17 +313,52 @@ class TagSelectorBase extends HTMLElement {
       const isSelected = this.selectedItems.some(i => i._id === item._id);
       const itemElement = document.createElement('div');
       itemElement.className = `suggestion-item ${isSelected ? 'disabled' : ''}`;
-      itemElement.textContent = this.formatSuggestionText(item);
       itemElement.dataset.index = index;
 
+      // Create content wrapper
+      const content = document.createElement('div');
+      content.className = 'suggestion-content';
+      content.textContent = this.formatSuggestionText(item);
+      itemElement.appendChild(content);
+
+      // Create actions wrapper
+      const actions = document.createElement('div');
+      actions.className = 'suggestion-actions';
+
+      // Add edit button
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.type = 'button';
+      editBtn.innerHTML = '✏️ Edit';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.handleEditClick(item);
+      });
+      actions.appendChild(editBtn);
+
+      itemElement.appendChild(actions);
+
       if (!isSelected) {
-        itemElement.addEventListener('click', () => {
-          this.selectItem(item);
+        itemElement.addEventListener('click', (e) => {
+          // Don't select if clicking on edit button
+          if (!e.target.closest('.edit-btn')) {
+            this.selectItem(item);
+          }
         });
       }
 
       dropdown.appendChild(itemElement);
     });
+  }
+
+  // Override this method in subclasses to handle edit clicks
+  handleEditClick (item) {
+    // Emit a generic edit event that subclasses can customize
+    this.dispatchEvent(new CustomEvent('edit-item', {
+      bubbles: true,
+      composed: true,
+      detail: { item }
+    }));
   }
 
   showSuggestions () {

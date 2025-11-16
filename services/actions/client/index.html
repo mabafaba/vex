@@ -86,6 +86,7 @@
       
       <div class="tabs">
         <button class="tab active" data-tab="create">Create</button>
+        <button class="tab" data-tab="edit">Edit</button>
         <button class="tab" data-tab="timeline">Timeline</button>
         <button class="tab" data-tab="network">Network</button>
         <button class="tab" data-tab="map">Map</button>
@@ -100,6 +101,20 @@
         <div class="section">
           <h2>Create Group</h2>
           <group-form></group-form>
+        </div>
+      </div>
+      
+      <div id="edit-tab" class="tab-content">
+        <div class="section">
+          <h2>Edit Action</h2>
+          <p style="margin-bottom: 15px; color: #666;">Search for an action to edit:</p>
+          <action-tag-selector id="edit-action-selector"></action-tag-selector>
+        </div>
+        
+        <div class="section">
+          <h2>Edit Group</h2>
+          <p style="margin-bottom: 15px; color: #666;">Search for a group to edit:</p>
+          <group-tag-selector id="edit-group-selector"></group-tag-selector>
         </div>
       </div>
       
@@ -122,6 +137,10 @@
       </div>
     </div>
     
+    <!-- Edit components (modals) -->
+    <action-edit></action-edit>
+    <group-edit></group-edit>
+    
     <!-- Load Leaflet -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     
@@ -141,11 +160,65 @@
     <!-- Load action service components -->
     <script type="module" src="/vex/actions/static/action-form.js"></script>
     <script type="module" src="/vex/actions/static/group-form.js"></script>
+    <script type="module" src="/vex/actions/static/action-edit.js"></script>
+    <script type="module" src="/vex/actions/static/group-edit.js"></script>
     <script type="module" src="/vex/actions/static/action-timeline.js"></script>
     <script type="module" src="/vex/actions/static/action-network.js"></script>
     <script type="module" src="/vex/actions/static/action-map.js"></script>
     
     <script>
+      // Get edit modal components
+      const actionEdit = document.querySelector('action-edit');
+      const groupEdit = document.querySelector('group-edit');
+
+      // Handle edit events from tag selectors
+      document.addEventListener('edit-action', (e) => {
+        const { actionId } = e.detail;
+        if (actionId && actionEdit) {
+          actionEdit.open(actionId);
+        }
+      });
+
+      document.addEventListener('edit-group', (e) => {
+        const { groupId } = e.detail;
+        if (groupId && groupEdit) {
+          groupEdit.open(groupId);
+        }
+      });
+
+      // Listen for saved events to refresh views
+      if (actionEdit) {
+        actionEdit.addEventListener('action-saved', () => {
+          // Refresh timeline, network, and map if they exist
+          const timeline = document.querySelector('action-timeline');
+          if (timeline && timeline.loadActions) {
+            timeline.loadActions();
+          }
+          const network = document.querySelector('action-network');
+          if (network && network.loadData) {
+            network.loadData();
+          }
+          const map = document.querySelector('action-map');
+          if (map && map.loadData) {
+            map.loadData();
+          }
+        });
+      }
+
+      if (groupEdit) {
+        groupEdit.addEventListener('group-saved', () => {
+          // Refresh network and map if they exist
+          const network = document.querySelector('action-network');
+          if (network && network.loadData) {
+            network.loadData();
+          }
+          const map = document.querySelector('action-map');
+          if (map && map.loadData) {
+            map.loadData();
+          }
+        });
+      }
+
       // Tab switching
       document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {

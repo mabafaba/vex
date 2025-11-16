@@ -8,6 +8,29 @@ class GroupForm extends HTMLElement {
     this.render();
   }
 
+  static get observedAttributes () {
+    return ['group-id'];
+  }
+
+  attributeChangedCallback (name, oldValue, newValue) {
+    if (name === 'group-id' && newValue !== oldValue && newValue) {
+      // Only load if the component is connected
+      if (this.isConnected) {
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+          this.loadGroup(newValue);
+        }, 0);
+      }
+    } else if (name === 'group-id' && !newValue) {
+      // Clear form if group-id is removed
+      this.group = null;
+      const form = this.shadowRoot.querySelector('form');
+      if (form) {
+        form.reset();
+      }
+    }
+  }
+
   async connectedCallback () {
     await this.loadGroups();
     if (this.hasAttribute('group-id')) {
@@ -42,10 +65,28 @@ class GroupForm extends HTMLElement {
   populateForm () {
     if (!this.group) return;
 
-    this.shadowRoot.querySelector('#name').value = this.group.name || '';
-    this.shadowRoot.querySelector('#description').value = this.group.description || '';
-    this.shadowRoot.querySelector('#link').value = this.group.link || '';
-    this.shadowRoot.querySelector('#contact').value = this.group.contact || '';
+    // Wait for form elements to be ready
+    const nameInput = this.shadowRoot.querySelector('#name');
+    const descriptionInput = this.shadowRoot.querySelector('#description');
+    const linkInput = this.shadowRoot.querySelector('#link');
+    const contactInput = this.shadowRoot.querySelector('#contact');
+
+    if (!nameInput) {
+      // Form not ready yet, try again after a short delay
+      setTimeout(() => this.populateForm(), 100);
+      return;
+    }
+
+    nameInput.value = this.group.name || '';
+    if (descriptionInput) {
+      descriptionInput.value = this.group.description || '';
+    }
+    if (linkInput) {
+      linkInput.value = this.group.link || '';
+    }
+    if (contactInput) {
+      contactInput.value = this.group.contact || '';
+    }
 
     // Set places if available
     const locationPicker = this.shadowRoot.querySelector('action-location-picker');

@@ -10,6 +10,33 @@ class ActionForm extends HTMLElement {
     this.render();
   }
 
+  static get observedAttributes () {
+    return ['action-id'];
+  }
+
+  attributeChangedCallback (name, oldValue, newValue) {
+    console.log('ActionForm: attributeChangedCallback', { name, oldValue, newValue, isConnected: this.isConnected });
+    if (name === 'action-id' && newValue !== oldValue && newValue) {
+      // Only load if the component is connected
+      if (this.isConnected) {
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+          this.loadAction(newValue);
+        }, 0);
+      } else {
+        console.log('ActionForm: Not connected, skipping load');
+      }
+    } else if (name === 'action-id' && !newValue) {
+      // Clear form if action-id is removed
+      this.action = null;
+      this.pictures = [];
+      const form = this.shadowRoot.querySelector('form');
+      if (form) {
+        form.reset();
+      }
+    }
+  }
+
   async connectedCallback () {
     await this.loadGroups();
     await this.loadActions();
@@ -30,17 +57,21 @@ class ActionForm extends HTMLElement {
 
   async loadAction (id) {
     try {
+      console.log('ActionForm: Loading action', id);
       const response = await fetch(`/vex/actions/${id}`, {
         credentials: 'include'
       });
       if (response.ok) {
         this.action = await response.json();
+        console.log('ActionForm: Action loaded', this.action);
         // Set exclude-id on action-tag-selector to prevent selecting self
         const partOfSelector = this.shadowRoot.querySelector('action-tag-selector');
         if (partOfSelector && id) {
           partOfSelector.setAttribute('exclude-id', id);
         }
         this.populateForm();
+      } else {
+        console.error('ActionForm: Failed to load action', response.status);
       }
     } catch (error) {
       console.error('Error loading action:', error);
@@ -49,16 +80,47 @@ class ActionForm extends HTMLElement {
 
   populateForm () {
     if (!this.action) {
+      console.log('ActionForm: No action data to populate');
       return;
     }
 
-    this.shadowRoot.querySelector('#name').value = this.action.name || '';
-    this.shadowRoot.querySelector('#description').value = this.action.description || '';
+    // Wait for form elements to be ready
+    const nameInput = this.shadowRoot.querySelector('#name');
+    const descriptionInput = this.shadowRoot.querySelector('#description');
+    const dateInput = this.shadowRoot.querySelector('#date');
+    const contactInput = this.shadowRoot.querySelector('#contact');
+
+    if (!nameInput || !dateInput) {
+      console.log('ActionForm: Form elements not ready, retrying...');
+      // Form not ready yet, try again after a short delay
+      if (!this._populateRetries) {
+        this._populateRetries = 0;
+      }
+      if (this._populateRetries < 20) {
+        this._populateRetries++;
+        setTimeout(() => this.populateForm(), 100);
+        return;
+      } else {
+        console.error('ActionForm: Failed to populate form after multiple retries');
+        this._populateRetries = 0;
+        return;
+      }
+    }
+
+    console.log('ActionForm: Populating form with action data');
+    this._populateRetries = 0;
+
+    nameInput.value = this.action.name || '';
+    if (descriptionInput) {
+      descriptionInput.value = this.action.description || '';
+    }
     const dateValue = this.action.date
       ? new Date(this.action.date).toISOString().slice(0, 16)
       : '';
-    this.shadowRoot.querySelector('#date').value = dateValue;
-    this.shadowRoot.querySelector('#contact').value = this.action.contact || '';
+    dateInput.value = dateValue;
+    if (contactInput) {
+      contactInput.value = this.action.contact || '';
+    }
 
     // Load pictures
     if (this.action.pictures && this.action.pictures.length > 0) {

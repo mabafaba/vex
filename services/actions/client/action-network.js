@@ -27,6 +27,7 @@ class Node {
     this.isRoot = false; // Whether this is a root node
     this.anchorX = null; // Anchor point X (null if not root)
     this.anchorY = null; // Anchor point Y (null if not root)
+    this.parked = false; // Whether this node is parked (excluded from simulation)
   }
 
   formatDate (dateString) {
@@ -46,9 +47,8 @@ class Node {
       .append('div')
       .attr('class', `node node-${this.type}`)
       .attr('data-node-id', this.id)
-      .style('left', `${this.x}px`)
-      .style('top', `${this.y}px`)
-      .style('position', 'absolute');
+      .style('position', 'absolute')
+      .style('transform', `translate(${this.x}px, ${this.y}px)`);
 
     // Add title with type tag
     const titleDiv = selection.append('div')
@@ -413,12 +413,11 @@ class Node {
 
   render (time = 0) {
     if (this.element) {
-      this.element.style.left = `${this.x}px`;
-      this.element.style.top = `${this.y}px`;
       // Animated swing motion (handmade hanging effect)
       const swing = Math.sin(time * this.swingSpeed + this.swingPhase) * this.swingAmplitude;
       const currentTilt = this.baseTilt + swing;
-      this.element.style.transform = `rotate(${currentTilt}deg)`;
+      // Use transform for both translation and rotation (GPU-accelerated)
+      this.element.style.transform = `translate(${this.x}px, ${this.y}px) rotate(${currentTilt}deg)`;
     }
   }
 
@@ -434,6 +433,22 @@ class Node {
       width: this.width / 2,
       height: this.height / 2
     };
+  }
+
+  park () {
+    this.parked = true;
+    if (this.element) {
+      this.element.classList.add('node-parked');
+      this.element.style.display = 'none';
+    }
+  }
+
+  unpark () {
+    this.parked = false;
+    if (this.element) {
+      this.element.classList.remove('node-parked');
+      this.element.style.display = '';
+    }
   }
 }
 
@@ -652,7 +667,7 @@ class Network {
     if (connectedIds) {
       connectedIds.forEach(connectedId => {
         const connectedNode = this.nodes.find(n => n.id === connectedId);
-        if (!connectedNode || !connectedNode.element) {
+        if (!connectedNode || !connectedNode.element || connectedNode.parked) {
           return;
         }
 
@@ -715,7 +730,7 @@ class Network {
     const connectedIds = this.connections.get(node.id) || new Set();
 
     this.nodes.forEach(otherNode => {
-      if (node.id === otherNode.id || !otherNode.element || connectedIds.has(otherNode.id)) {
+      if (node.id === otherNode.id || !otherNode.element || otherNode.parked || connectedIds.has(otherNode.id)) {
         return;
       }
 
@@ -742,7 +757,7 @@ class Network {
     const nodeHalf = node.getHalfDimensions();
 
     this.nodes.forEach(otherNode => {
-      if (node.id === otherNode.id || !otherNode.element) {
+      if (node.id === otherNode.id || !otherNode.element || otherNode.parked) {
         return;
       }
 
@@ -834,6 +849,11 @@ class Network {
         return;
       }
 
+      // Skip parked nodes (not simulated or rendered)
+      if (node.parked) {
+        return;
+      }
+
       // Skip physics for nodes being dragged
       if (node.isDragging) {
         if (!skipRender) {
@@ -905,7 +925,7 @@ class Network {
 
     let maxY = 600; // Minimum height
     this.nodes.forEach(node => {
-      if (node.element) {
+      if (node.element && !node.parked) {
         const nodeBottom = node.y + node.height;
         if (nodeBottom > maxY) {
           maxY = nodeBottom;
@@ -941,10 +961,61 @@ class Network {
     this.updateHighlighting();
   }
 
+  parkNode (nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (node) {
+      node.park();
+    }
+  }
+
+  unparkNode (nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (node) {
+      node.unpark();
+    }
+  }
+
+  parkAll () {
+    this.nodes.forEach(node => node.park());
+  }
+
+  unparkConnected (nodeId) {
+    // Unpark the selected node
+    this.unparkNode(nodeId);
+
+    // Unpark all nodes connected to it (bidirectional)
+    const connectedIds = this.connections.get(nodeId);
+    if (connectedIds) {
+      connectedIds.forEach(connectedId => {
+        this.unparkNode(connectedId);
+      });
+    }
+  }
+
   updateHighlighting () {
+    // Park/unpark nodes based on selection
+    if (!this.selectedNodeId) {
+      // When nothing is selected, unpark all nodes
+      this.nodes.forEach(node => {
+        if (node.parked) {
+          node.unpark();
+        }
+      });
+    } else {
+      // When something is selected, park all nodes first
+      this.parkAll();
+      // Then unpark only the selected node and its connections
+      this.unparkConnected(this.selectedNodeId);
+    }
+
     // Update node highlighting
     this.nodes.forEach(node => {
       if (!node.element) {
+        return;
+      }
+
+      // Skip parked nodes for highlighting updates
+      if (node.parked) {
         return;
       }
 
@@ -1066,9 +1137,13 @@ class Network {
       // Handle anchor edges (from anchor point to root node)
       if (edge.isAnchor && edge.source === edge.target) {
         const node = edge.source;
-        if (!node.element || !node.isRoot || node.anchorX === null || node.anchorY === null) {
+        if (!node.element || !node.isRoot || node.anchorX === null || node.anchorY === null || node.parked) {
+          // eslint-disable-next-line no-undef
+          d3.select(this).style('display', 'none');
           return;
         }
+        // eslint-disable-next-line no-undef
+        d3.select(this).style('display', '');
 
         const nodeRect = node.element.getBoundingClientRect();
         const x1 = node.anchorX; // Anchor point X (relative to container)
@@ -1097,8 +1172,20 @@ class Network {
       const targetNode = edge.target;
 
       if (!sourceNode.element || !targetNode.element) {
+        // eslint-disable-next-line no-undef
+        d3.select(this).style('display', 'none');
         return;
       }
+
+      // Hide edges connected to parked nodes
+      if (sourceNode.parked || targetNode.parked) {
+        // eslint-disable-next-line no-undef
+        d3.select(this).style('display', 'none');
+        return;
+      }
+
+      // eslint-disable-next-line no-undef
+      d3.select(this).style('display', '');
 
       const sourceRect = sourceNode.element.getBoundingClientRect();
       const targetRect = targetNode.element.getBoundingClientRect();
@@ -1414,6 +1501,9 @@ class ActionNetwork extends HTMLElement {
           pointer-events: none !important;
           height: 0 !important;
           overflow: hidden !important;
+        }
+        .node-parked {
+          display: none !important;
         }
         .empty-state {
           text-align: center;

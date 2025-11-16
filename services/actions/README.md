@@ -60,6 +60,56 @@ A service for managing actions (events) and groups with location-based features,
 <group-form group-id="GROUP_ID"></group-form>
 ```
 
+### Action Edit (Modal)
+A modal dialog component for editing existing actions. Opens a modal with the action form pre-populated.
+
+```html
+<!-- Add to your page -->
+<action-edit></action-edit>
+
+<!-- Open the edit modal programmatically -->
+<script>
+  const actionEdit = document.querySelector('action-edit');
+  
+  // Open with an action ID
+  actionEdit.open('ACTION_ID');
+  
+  // Or set attributes
+  actionEdit.setAttribute('action-id', 'ACTION_ID');
+  actionEdit.setAttribute('open', '');
+  
+  // Listen for save events
+  actionEdit.addEventListener('action-saved', (e) => {
+    console.log('Action saved:', e.detail);
+  });
+</script>
+```
+
+### Group Edit (Modal)
+A modal dialog component for editing existing groups. Opens a modal with the group form pre-populated.
+
+```html
+<!-- Add to your page -->
+<group-edit></group-edit>
+
+<!-- Open the edit modal programmatically -->
+<script>
+  const groupEdit = document.querySelector('group-edit');
+  
+  // Open with a group ID
+  groupEdit.open('GROUP_ID');
+  
+  // Or set attributes
+  groupEdit.setAttribute('group-id', 'GROUP_ID');
+  groupEdit.setAttribute('open', '');
+  
+  // Listen for save events
+  groupEdit.addEventListener('group-saved', (e) => {
+    console.log('Group saved:', e.detail);
+  });
+</script>
+```
+
 ### Timeline View
 ```html
 <action-timeline></action-timeline>
@@ -84,6 +134,8 @@ A service for managing actions (events) and groups with location-based features,
   <script type="module" src="/vex/administrative/static/leafletlocationpicker.js"></script>
   <script type="module" src="/vex/actions/static/action-form.js"></script>
   <script type="module" src="/vex/actions/static/group-form.js"></script>
+  <script type="module" src="/vex/actions/static/action-edit.js"></script>
+  <script type="module" src="/vex/actions/static/group-edit.js"></script>
   <script type="module" src="/vex/actions/static/action-timeline.js"></script>
   <script type="module" src="/vex/actions/static/action-network.js"></script>
   <script type="module" src="/vex/actions/static/action-map.js"></script>
@@ -96,6 +148,10 @@ A service for managing actions (events) and groups with location-based features,
   
   <h2>Create Group</h2>
   <group-form></group-form>
+  
+  <!-- Edit components (modals) -->
+  <action-edit></action-edit>
+  <group-edit></group-edit>
   
   <h2>Timeline</h2>
   <action-timeline></action-timeline>
