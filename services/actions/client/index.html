@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Actions & Groups - Vex</title>
+    <title>KNITWORK</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -83,7 +83,6 @@
   </head>
   <body>
     <div class="container">
-      <h1>Actions & Groups</h1>
       
       <div class="tabs">
         <button class="tab active" data-tab="create">Create</button>
@@ -106,21 +105,18 @@
       
       <div id="timeline-tab" class="tab-content">
         <div class="section">
-          <h2>Action Timeline</h2>
           <action-timeline></action-timeline>
         </div>
       </div>
       
       <div id="network-tab" class="tab-content">
         <div class="section">
-          <h2>Action & Group Network</h2>
           <action-network></action-network>
         </div>
       </div>
       
       <div id="map-tab" class="tab-content">
         <div class="section">
-          <h2>Action & Group Map</h2>
           <action-map></action-map>
         </div>
       </div>
@@ -134,6 +130,13 @@
     
     <!-- Load action location picker -->
     <script type="module" src="/vex/actions/static/action-location-picker.js"></script>
+    
+    <!-- Load tag selector base class (must be loaded first) -->
+    <script type="module" src="/vex/actions/static/tag-selector-base.js"></script>
+    
+    <!-- Load tag selector implementations -->
+    <script type="module" src="/vex/actions/static/group-tag-selector.js"></script>
+    <script type="module" src="/vex/actions/static/action-tag-selector.js"></script>
     
     <!-- Load action service components -->
     <script type="module" src="/vex/actions/static/action-form.js"></script>

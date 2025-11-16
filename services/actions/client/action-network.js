@@ -23,7 +23,7 @@ class Node {
     this.dragStartX = 0;
     this.dragStartY = 0;
     this.hasMoved = false; // Track if mouse moved during mousedown to distinguish click from drag
-    this.weight = 1;
+    this.weight = 1 + Math.random() * 2; // Random weight between 1 and 3
     this.isRoot = false; // Whether this is a root node
     this.anchorX = null; // Anchor point X (null if not root)
     this.anchorY = null; // Anchor point Y (null if not root)
@@ -50,7 +50,7 @@ class Node {
       .style('top', `${this.y}px`)
       .style('position', 'absolute');
 
-    // Add title with type tag (always visible)
+    // Add title with type tag
     const titleDiv = selection.append('div')
       .attr('class', 'node-title');
 
@@ -61,19 +61,15 @@ class Node {
       .attr('class', `node-type-tag ${this.type}`)
       .text(this.type);
 
-    // Create always-visible container for date and pictures
-    const alwaysVisible = selection.append('div')
-      .attr('class', 'node-always-visible');
-
-    // Create details container (shown on hover/click)
-    const detailsContainer = selection.append('div')
-      .attr('class', 'node-details');
+    // Create content container (shown when not minimized)
+    const contentContainer = selection.append('div')
+      .attr('class', 'node-content');
 
     // Add fields based on type
     if (this.type === 'action') {
-      this.addActionFields(alwaysVisible, detailsContainer);
+      this.addActionFields(contentContainer);
     } else if (this.type === 'group') {
-      this.addGroupFields(alwaysVisible, detailsContainer);
+      this.addGroupFields(contentContainer);
     }
 
     // Add drag handlers
@@ -82,15 +78,41 @@ class Node {
       this.startDrag(event);
     });
 
-    // Add click handler to toggle details (only if not dragged)
+    // Add click handler for highlighting (only if not dragged)
     selection.on('click', (event) => {
       event.stopPropagation();
-      // Only toggle if we didn't drag
-      if (!this.hasMoved) {
-        const isExpanded = selection.classed('expanded');
-        selection.classed('expanded', !isExpanded);
+      // Only handle highlighting if we didn't drag
+      if (!this.hasMoved && this.element && this.element.parentElement && this.element.parentElement._network) {
+        const network = this.element.parentElement._network;
+        const currentlySelected = network.selectedNodeId;
+
+        // If clicking the same node, deselect it
+        if (currentlySelected === this.id) {
+          network.setSelectedNode(null);
+        } else {
+          // Otherwise, select this node (works for both regular and connected nodes)
+          network.setSelectedNode(this.id);
+        }
       }
       this.hasMoved = false;
+    });
+
+    // Add hover handlers to bring node to front
+    selection.on('mouseenter', () => {
+      if (this.element) {
+        this.element.style.zIndex = '2000';
+      }
+    });
+
+    selection.on('mouseleave', () => {
+      if (this.element) {
+        // Reset z-index unless node is selected or connected
+        const isSelected = this.element.classList.contains('node-selected');
+        const isConnected = this.element.classList.contains('node-connected');
+        if (!isSelected && !isConnected) {
+          this.element.style.zIndex = '';
+        }
+      }
     });
 
     this.element = selection.node();
@@ -185,18 +207,22 @@ class Node {
     };
   }
 
-  addActionFields (alwaysVisible, detailsContainer) {
+  addActionFields (container) {
     const data = this.data;
 
-    // Always visible: date and pictures
+    // Store first image URL for use as circle background
+    if (data.pictures && data.pictures.length > 0 && data.pictures[0]) {
+      this.imageUrl = data.pictures[0];
+    }
+
     if (data.date) {
-      this.addField(alwaysVisible, null, this.formatDate(data.date));
+      this.addField(container, null, this.formatDate(data.date));
     }
 
     if (data.pictures && data.pictures.length > 0) {
       data.pictures.forEach(pictureUrl => {
         if (pictureUrl) {
-          alwaysVisible.append('img')
+          container.append('img')
             .attr('class', 'node-image')
             .attr('src', pictureUrl)
             .attr('alt', 'Action picture');
@@ -204,77 +230,78 @@ class Node {
       });
     }
 
-    // Join button (always visible)
-    alwaysVisible.append('button')
+    container.append('button')
       .attr('class', 'node-action-button join')
       .text('Join')
       .on('mousedown', (event) => {
-        event.stopPropagation(); // Prevent drag from starting
+        event.stopPropagation();
       })
       .on('click', (event) => {
         event.stopPropagation();
         this.handleJoin(data);
       });
 
-    // Details (shown on hover/click): description, contact, counts, etc.
     if (data.description) {
-      this.addField(detailsContainer, null, data.description);
+      this.addField(container, null, data.description);
     }
 
     if (data.contact) {
-      this.addField(detailsContainer, null, data.contact);
+      this.addField(container, null, data.contact);
     }
 
     if (data.organisers && data.organisers.length > 0) {
       const orgCount = Array.isArray(data.organisers) ? data.organisers.length : 0;
-      this.addField(detailsContainer, null, `${orgCount} group(s)`);
+      this.addField(container, null, `${orgCount} group(s)`);
     }
 
     if (data.partOf && data.partOf.length > 0) {
       const partOfCount = Array.isArray(data.partOf) ? data.partOf.length : 0;
-      this.addField(detailsContainer, null, `${partOfCount} action(s)`);
+      this.addField(container, null, `${partOfCount} action(s)`);
     }
 
     if (data.createdAt) {
-      this.addField(detailsContainer, null, this.formatDate(data.createdAt));
+      this.addField(container, null, this.formatDate(data.createdAt));
     }
   }
 
-  addGroupFields (alwaysVisible, detailsContainer) {
+  addGroupFields (container) {
     const data = this.data;
 
-    // Contact button (always visible)
-    alwaysVisible.append('button')
+    // Store first image URL for use as circle background (if groups have images)
+    if (data.pictures && data.pictures.length > 0 && data.pictures[0]) {
+      this.imageUrl = data.pictures[0];
+    }
+
+    container.append('button')
       .attr('class', 'node-action-button contact')
       .text('Contact')
       .on('mousedown', (event) => {
-        event.stopPropagation(); // Prevent drag from starting
+        event.stopPropagation();
       })
       .on('click', (event) => {
         event.stopPropagation();
         this.handleContact(data);
       });
 
-    // Details (shown on hover/click)
     if (data.description) {
-      this.addField(detailsContainer, null, data.description);
+      this.addField(container, null, data.description);
     }
 
     if (data.link) {
-      this.addField(detailsContainer, null, data.link);
+      this.addField(container, null, data.link);
     }
 
     if (data.contact) {
-      this.addField(detailsContainer, null, data.contact);
+      this.addField(container, null, data.contact);
     }
 
     if (data.partOf && data.partOf.length > 0) {
       const partOfCount = Array.isArray(data.partOf) ? data.partOf.length : 0;
-      this.addField(detailsContainer, null, `${partOfCount} group(s)`);
+      this.addField(container, null, `${partOfCount} group(s)`);
     }
 
     if (data.createdAt) {
-      this.addField(detailsContainer, null, this.formatDate(data.createdAt));
+      this.addField(container, null, this.formatDate(data.createdAt));
     }
   }
 
@@ -327,8 +354,9 @@ class Node {
   }
 
   applyForce (fx, fy) {
-    this.ax += fx;
-    this.ay += fy;
+    // Heavier nodes accelerate slower (force divided by weight)
+    this.ax += fx / this.weight;
+    this.ay += fy / this.weight;
   }
 
   updateVelocity (damping, maxSpeed) {
@@ -365,12 +393,22 @@ class Node {
     }
   }
 
-  updateDimensions () {
-    if (Math.random() < 0.01 && this.element) {
-      const rect = this.element.getBoundingClientRect();
-      this.width = rect.width || this.width || 100;
-      this.height = rect.height || this.height || 40;
+  constrainToBoundsX (width) {
+    // Only constrain X bounds, allow Y to extend for scrolling
+    if (this.x < 0) {
+      this.x = 0;
+      this.vx *= -0.5;
+    } else if (this.x > width - this.width) {
+      this.x = width - this.width;
+      this.vx *= -0.5;
     }
+
+    // Only prevent nodes from going above the top
+    if (this.y < 0) {
+      this.y = 0;
+      this.vy *= -0.5;
+    }
+    // Allow nodes to extend below the visible area for scrolling
   }
 
   render (time = 0) {
@@ -405,15 +443,21 @@ class Network {
     this.nodes = nodes;
     this.edges = edges;
     this.centerAttractionStrength = 0.0;
-    this.collisionRepulsionStrength = 0.00001; // Strong repulsion force for overlapping nodes
-    this.collisionPadding = 10;
-    this.edgeAttractionStrength = 0.1;
-    this.unconnectedRepulsionStrength = 0.001;
-    this.idealEdgeLength = 250;
-    this.maxSpeed = 20;
-    this.damping = 0.95;
-    this.gravity = 0.1;
+    this.collisionRepulsionStrength = 10; // Strong repulsion force for overlapping nodes
+    this.collisionPadding = 30;
+    this.collisionDetectionEnabled = true; // Flag to enable/disable collision detection
+    this.edgeAttractionStrength = 0.01;
+    this.unconnectedRepulsionStrength = 0.01;
+    this.idealEdgeLength = 150;
+    this.maxSpeed = 2;
+    this.damping = 0.9;
+    this.gravity = 0.0;
+    this.windStrength = 0.0001; // Base wind strength
+    this.windDirection = 0; // Wind direction in radians
+    this.windTime = 0; // Time counter for wind fluctuation
     this.animationId = null;
+    this.timeOffset = 0; // Track time offset for animations after pre-calculation
+    this.selectedNodeId = null; // Track which node is currently selected/clicked
     this.buildConnectionMap();
     this.createEdgesSVG();
   }
@@ -425,12 +469,133 @@ class Network {
       this.connections.set(node.id, new Set());
     });
 
+    // Build edge length map: key is "sourceId-targetId" or "targetId-sourceId" (undirected)
+    this.edgeLengths = new Map();
+    const baseLength = this.idealEdgeLength;
+
+    // First, build connections map and calculate node degrees
     this.edges.forEach(edge => {
+      // Skip anchor edges (self-referential)
+      if (edge.isAnchor) {
+        return;
+      }
+
       const sourceId = edge.source.id;
       const targetId = edge.target.id;
       this.connections.get(sourceId).add(targetId);
       this.connections.get(targetId).add(sourceId);
     });
+
+    // Calculate and store node degrees
+    this.nodes.forEach(node => {
+      const degree = this.connections.get(node.id)?.size || 0;
+      node.degree = degree;
+    });
+
+    // Group edges by both source and target nodes to calculate edge order from both perspectives
+    const edgesByNode = new Map();
+    this.edges.forEach(edge => {
+      if (edge.isAnchor) {
+        return;
+      }
+      const sourceId = edge.source.id;
+      const targetId = edge.target.id;
+
+      // Group by source
+      if (!edgesByNode.has(sourceId)) {
+        edgesByNode.set(sourceId, []);
+      }
+      edgesByNode.get(sourceId).push({ edge, direction: 'source' });
+
+      // Group by target (for reverse direction)
+      if (!edgesByNode.has(targetId)) {
+        edgesByNode.set(targetId, []);
+      }
+      edgesByNode.get(targetId).push({ edge, direction: 'target' });
+    });
+
+    // Calculate edge order from each node's perspective
+    const edgeOrderFromSource = new Map();
+    const edgeOrderFromTarget = new Map();
+
+    edgesByNode.forEach((edgeInfos) => {
+      // Sort edges by connected node ID for consistent ordering
+      edgeInfos.sort((a, b) => {
+        const idA = a.direction === 'source' ? a.edge.target.id : a.edge.source.id;
+        const idB = b.direction === 'source' ? b.edge.target.id : b.edge.source.id;
+        return idA < idB ? -1 : idA > idB ? 1 : 0;
+      });
+
+      // Assign order indices: first edge = 1, second = 2, third = 3, etc.
+      edgeInfos.forEach((edgeInfo, index) => {
+        const order = index + 1; // 1, 2, 3, etc.
+        const sourceId = edgeInfo.edge.source.id;
+        const targetId = edgeInfo.edge.target.id;
+
+        if (edgeInfo.direction === 'source') {
+          const key = `${sourceId}-${targetId}`;
+          edgeOrderFromSource.set(key, order);
+        } else {
+          const key = `${targetId}-${sourceId}`;
+          edgeOrderFromTarget.set(key, order);
+        }
+      });
+    });
+
+    // Assign lengths to edges considering both source and target perspectives
+    // Use the maximum order from both perspectives to determine length
+    this.edges.forEach(edge => {
+      if (edge.isAnchor) {
+        return;
+      }
+      const sourceId = edge.source.id;
+      const targetId = edge.target.id;
+      const key1 = `${sourceId}-${targetId}`;
+      const key2 = `${targetId}-${sourceId}`;
+
+      const orderFromSource = edgeOrderFromSource.get(key1) || 1;
+      const orderFromTarget = edgeOrderFromTarget.get(key2) || 1;
+
+      // Use the maximum order from both perspectives
+      const maxOrder = Math.max(orderFromSource, orderFromTarget);
+      const length = baseLength * maxOrder; // 1x, 2x, 3x, etc.
+
+      // Store length for both directions (undirected edge)
+      this.edgeLengths.set(key1, length);
+      this.edgeLengths.set(key2, length);
+    });
+
+    // Also store length on edge objects for reference
+    this.edges.forEach(edge => {
+      if (edge.isAnchor) {
+        return;
+      }
+      const sourceId = edge.source.id;
+      const targetId = edge.target.id;
+      const key = `${sourceId}-${targetId}`;
+      edge.length = this.edgeLengths.get(key) || baseLength;
+    });
+
+    // Log edge lengths for debugging
+    // eslint-disable-next-line no-console
+    this.edges.forEach(edge => {
+      if (!edge.isAnchor && edge.length) {
+        const sourceName = edge.source.data?.name || edge.source.id;
+        const targetName = edge.target.data?.name || edge.target.id;
+        const sourceId = edge.source.id;
+        const targetId = edge.target.id;
+        const key1 = `${sourceId}-${targetId}`;
+        const key2 = `${targetId}-${sourceId}`;
+        const orderFromSource = edgeOrderFromSource.get(key1) || 1;
+        const orderFromTarget = edgeOrderFromTarget.get(key2) || 1;
+        const multiplier = (edge.length / baseLength).toFixed(1);
+      }
+    });
+  }
+
+  getEdgeLength (sourceId, targetId) {
+    const key = `${sourceId}-${targetId}`;
+    return this.edgeLengths.get(key) || this.idealEdgeLength;
   }
 
   areConnected (nodeId1, nodeId2) {
@@ -482,7 +647,6 @@ class Network {
     // Attract to connected nodes (like a rope/thread)
     const connectedIds = this.connections.get(node.id);
     const nodeCenter = node.getCenter();
-    const maxRopeLength = this.idealEdgeLength; // Maximum length before rope becomes taut
 
     // Apply attraction to regular connected nodes
     if (connectedIds) {
@@ -491,6 +655,9 @@ class Network {
         if (!connectedNode || !connectedNode.element) {
           return;
         }
+
+        // Get the assigned length for this edge
+        const maxRopeLength = this.getEdgeLength(node.id, connectedId);
 
         const otherCenter = connectedNode.getCenter();
         const dx = otherCenter.x - nodeCenter.x;
@@ -517,7 +684,9 @@ class Network {
     }
 
     // Apply attraction to anchor point for root nodes
+    // Anchor edges use the base ideal edge length
     if (node.isRoot && node.anchorX !== null && node.anchorY !== null) {
+      const maxRopeLength = this.idealEdgeLength; // Anchor edges use base length
       const dx = node.anchorX - nodeCenter.x;
       const dy = node.anchorY - nodeCenter.y;
       const distance = this.dist(nodeCenter.x, nodeCenter.y, node.anchorX, node.anchorY);
@@ -564,6 +733,11 @@ class Network {
   }
 
   handleCollisions (node) {
+    // Skip collision detection if disabled
+    if (!this.collisionDetectionEnabled) {
+      return;
+    }
+
     const nodeCenter = node.getCenter();
     const nodeHalf = node.getHalfDimensions();
 
@@ -598,10 +772,10 @@ class Network {
 
           // Normalize direction vector
           const dirX = dx / distance;
-          let dirY = dy / distance;
+          const dirY = dy / distance;
 
           // cancel out y direction
-          dirY = 0;
+          //dirY = 0;
           // Apply repulsion force to this node (away from other node)
           // If other node is being dragged, apply stronger force to this node
           if (otherNode.isDragging) {
@@ -634,11 +808,21 @@ class Network {
     });
   }
 
-  update () {
+  update (skipRender = false) {
     const { width, height } = this.getDimensions();
     const centerX = width / 2;
     const centerY = height / 2;
-    const time = Date.now() / 1000; // Time in seconds for animation
+    const time = (Date.now() / 1000) + this.timeOffset; // Time in seconds for animation
+
+    // Update fluctuating wind
+    this.windTime += 0.01; // Increment wind time
+    // Wind direction fluctuates smoothly
+    this.windDirection = Math.sin(this.windTime * 0.5) * Math.PI * 2;
+    // Wind strength fluctuates between 0.5x and 1.5x base strength
+    const windStrengthMultiplier = 0.5 + (Math.sin(this.windTime * 0.3) + 1) * 0.5;
+    const currentWindStrength = this.windStrength * windStrengthMultiplier;
+    const windX = Math.cos(this.windDirection) * currentWindStrength;
+    const windY = Math.sin(this.windDirection) * currentWindStrength;
 
     // Update SVG size if container resized
     if (this.edgesSvg) {
@@ -652,7 +836,9 @@ class Network {
 
       // Skip physics for nodes being dragged
       if (node.isDragging) {
-        node.render(time);
+        if (!skipRender) {
+          node.render(time);
+        }
         return;
       }
 
@@ -661,19 +847,79 @@ class Network {
       this.applyEdgeAttraction(node);
       this.applyUnconnectedRepulsion(node);
       node.applyGravity(this.gravity);
+      // Apply wind force (affects all nodes)
+      node.applyForce(windX, windY);
       // Handle collisions before position update (apply strong repulsion forces)
       this.handleCollisions(node);
       node.updateVelocity(this.damping, this.maxSpeed);
       node.updatePosition();
-      node.updateDimensions();
-      node.constrainToBounds(width, height);
+
+      // Only constrain X bounds, allow Y to extend for scrolling
+      node.constrainToBoundsX(width);
       // Update anchor point position for root nodes (X follows node, Y is fixed)
       this.updateAnchorPoint(node, width);
-      node.render(time);
+      if (!skipRender) {
+        node.render(time);
+      }
     });
 
+    // Update container height based on node positions for scrolling
+    this.updateContainerHeight();
+
     // Update edge positions
-    this.updateEdges();
+    if (!skipRender) {
+      this.updateEdges();
+      // Update highlighting to ensure edge classes are applied
+      this.updateHighlighting();
+    }
+  }
+
+  precalculateTicks (numTicks = 1000) {
+    // eslint-disable-next-line no-console
+    console.log(`Pre-calculating ${numTicks} ticks...`);
+    const startTime = performance.now();
+
+    // Disable collision detection during pre-calculation for better performance
+    const wasCollisionEnabled = this.collisionDetectionEnabled;
+    this.collisionDetectionEnabled = false;
+
+    for (let i = 0; i < numTicks; i++) {
+      this.update(true); // Skip rendering during pre-calculation
+    }
+
+    // Re-enable collision detection after pre-calculation
+    this.collisionDetectionEnabled = wasCollisionEnabled;
+
+    const endTime = performance.now();
+    // eslint-disable-next-line no-console
+    console.log(`Pre-calculation complete in ${(endTime - startTime).toFixed(2)}ms`);
+    // Update time offset so visual animations continue smoothly
+    // Approximate: 1000 ticks at ~60fps = ~16.67 seconds
+    this.timeOffset = numTicks * 0.016;
+  }
+
+  updateContainerHeight () {
+    if (!this.container) {
+      return;
+    }
+
+    let maxY = 600; // Minimum height
+    this.nodes.forEach(node => {
+      if (node.element) {
+        const nodeBottom = node.y + node.height;
+        if (nodeBottom > maxY) {
+          maxY = nodeBottom;
+        }
+      }
+    });
+
+    // Add padding at bottom
+    maxY += 100;
+    // Update container height if needed
+    const currentHeight = parseInt(this.container.style.height) || 600;
+    if (maxY > currentHeight) {
+      this.container.style.height = `${maxY}px`;
+    }
   }
 
   updateAnchorPoint (node, width) {
@@ -687,6 +933,125 @@ class Network {
       node.anchorX = node.anchorX * 0.7 + targetX * 0.3;
       // Constrain anchor X to canvas bounds
       node.anchorX = Math.max(0, Math.min(node.anchorX, width));
+    }
+  }
+
+  setSelectedNode (nodeId) {
+    this.selectedNodeId = nodeId;
+    this.updateHighlighting();
+  }
+
+  updateHighlighting () {
+    // Update node highlighting
+    this.nodes.forEach(node => {
+      if (!node.element) {
+        return;
+      }
+
+      // When nothing is selected, minimize all nodes
+      if (!this.selectedNodeId) {
+        node.element.classList.add('node-minimized');
+        node.element.classList.remove('node-selected');
+        node.element.classList.remove('node-connected');
+        this.updateMinimizedSize(node);
+        return;
+      }
+
+      // When something is selected, use the existing logic
+      const isSelected = node.id === this.selectedNodeId;
+      const isConnected = this.areConnected(node.id, this.selectedNodeId);
+      const shouldMinimize = !isSelected && !isConnected;
+
+      if (isSelected) {
+        node.element.classList.add('node-selected');
+        node.element.classList.remove('node-minimized');
+        node.element.style.width = '';
+        node.element.style.height = '';
+        node.element.style.minWidth = '';
+        node.element.style.maxWidth = '';
+        node.element.style.backgroundImage = '';
+      } else {
+        node.element.classList.remove('node-selected');
+      }
+
+      if (isConnected) {
+        node.element.classList.add('node-connected');
+        node.element.classList.remove('node-minimized');
+        node.element.style.width = '';
+        node.element.style.height = '';
+        node.element.style.minWidth = '';
+        node.element.style.maxWidth = '';
+        node.element.style.backgroundImage = '';
+      } else {
+        node.element.classList.remove('node-connected');
+      }
+
+      if (shouldMinimize) {
+        node.element.classList.add('node-minimized');
+        this.updateMinimizedSize(node);
+      } else {
+        node.element.classList.remove('node-minimized');
+        node.element.style.width = '';
+        node.element.style.height = '';
+        node.element.style.minWidth = '';
+        node.element.style.maxWidth = '';
+        node.element.style.backgroundImage = '';
+      }
+    });
+
+    // Update edge highlighting
+    if (this.edgeSelection) {
+      this.edgeSelection.classed('edge-highlighted', (edge) => {
+        if (!this.selectedNodeId || edge.isAnchor) {
+          return false;
+        }
+        return edge.source.id === this.selectedNodeId || edge.target.id === this.selectedNodeId;
+      });
+    }
+  }
+
+  updateMinimizedSize (node) {
+    if (!node.element) {
+      return;
+    }
+
+    let size;
+
+    // If node has a photo background, set size to 100px
+    if (node.imageUrl) {
+      size = 100;
+    } else {
+      // Calculate size based on logarithmic scale of degree
+      // Base size: 20px, max size: 100px
+      // Using log scale: size = base + log(degree + 1) * scale
+      const baseSize = 50;
+      const maxSize = 120;
+      const degree = node.degree || 0;
+
+      // Logarithmic scale: log(degree + 1) to avoid log(0)
+      // Scale factor to map to size range
+      const logDegree = Math.log(degree + 1);
+      const maxLog = Math.log(100); // Assume max degree around 100 for scaling
+      const scale = (maxSize - baseSize) / maxLog;
+      const calculatedSize = baseSize + (logDegree * scale);
+
+      // Clamp to min/max
+      size = Math.max(baseSize, Math.min(maxSize, calculatedSize));
+    }
+
+    node.element.style.width = `${size}px`;
+    node.element.style.height = `${size}px`;
+    node.element.style.minWidth = `${size}px`;
+    node.element.style.maxWidth = `${size}px`;
+
+    // Set background image if available
+    if (node.imageUrl) {
+      node.element.style.backgroundImage = `url(${node.imageUrl})`;
+      node.element.style.backgroundSize = 'cover';
+      node.element.style.backgroundPosition = 'center';
+      node.element.style.backgroundRepeat = 'no-repeat';
+    } else {
+      node.element.style.backgroundImage = '';
     }
   }
 
@@ -764,7 +1129,11 @@ class Network {
     this.animationId = requestAnimationFrame(() => this.animate());
   }
 
-  start () {
+  start (precalculate = 1000) {
+    if (precalculate > 0) {
+      this.precalculateTicks(precalculate);
+    }
+
     setTimeout(() => {
       this.animate();
     }, 50);
@@ -783,6 +1152,7 @@ class ActionNetwork extends HTMLElement {
     super();
     this.actions = [];
     this.groups = [];
+    this.places = [];
     this.attachShadow({ mode: 'open' });
     this.render();
   }
@@ -794,9 +1164,10 @@ class ActionNetwork extends HTMLElement {
 
   async loadData () {
     try {
-      const [actionsRes, groupsRes] = await Promise.all([
+      const [actionsRes, groupsRes, placesRes] = await Promise.all([
         fetch('/vex/actions', { credentials: 'include' }),
-        fetch('/vex/groups', { credentials: 'include' })
+        fetch('/vex/groups', { credentials: 'include' }),
+        fetch('/vex/places', { credentials: 'include' })
       ]);
 
       if (actionsRes.ok) {
@@ -804,6 +1175,9 @@ class ActionNetwork extends HTMLElement {
       }
       if (groupsRes.ok) {
         this.groups = await groupsRes.json();
+      }
+      if (placesRes.ok) {
+        this.places = await placesRes.json();
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -819,11 +1193,13 @@ class ActionNetwork extends HTMLElement {
         }
         .network-container {
           width: 100%;
+          min-height: 600px;
           height: 600px;
           border: 2px dashed #8b0000;
           border-radius: 8px;
           position: relative;
-          overflow: hidden;
+          overflow-x: hidden;
+          overflow-y: auto;
           background: #000;
         }
         .node {
@@ -836,6 +1212,8 @@ class ActionNetwork extends HTMLElement {
           max-width: 250px;
           user-select: none;
           color: #fff;
+          transition: width 0.3s ease, height 0.3s ease, min-width 0.3s ease, max-width 0.3s ease,
+                      border-radius 0.3s ease, padding 0.3s ease, background-image 0.3s ease;
         }
         .node.dragging {
           cursor: grabbing;
@@ -870,6 +1248,7 @@ class ActionNetwork extends HTMLElement {
           align-items: center;
           justify-content: center;
           gap: 6px;
+          transition: opacity 0.2s ease;
         }
         .node-type-tag {
           display: inline-block;
@@ -890,16 +1269,19 @@ class ActionNetwork extends HTMLElement {
           color: #fff;
           border: 1px solid #8a2be2;
         }
-        .node-always-visible {
-          margin-top: 4px;
+        .node-type-tag.place {
+          background: rgba(0, 128, 0, 0.8);
+          color: #fff;
+          border: 1px solid #008000;
         }
-        .node-details {
-          display: none;
-          margin-top: 4px;
+        .node-place {
+          background: rgba(0, 128, 0, 0.8);
+          border-color: #008000;
+          border-style: solid;
         }
-        .node:hover .node-details,
-        .node.expanded .node-details {
-          display: block;
+        .node-content {
+          margin-top: 4px;
+          transition: opacity 0.2s ease;
         }
         .node-field {
           margin: 2px 0;
@@ -945,12 +1327,12 @@ class ActionNetwork extends HTMLElement {
           border-color: #8b0000;
         }
         .node-action {
-          background: rgba(80, 18, 137, 0.8);
+          background: rgba(234, 24, 164, 0.8);
           border-color: #8b0000;
           border-style: dashed;
         }
         .node-group {
-          background: rgba(67, 20, 111, 0.8);
+          background: rgba(83, 6, 237, 0.8);
           border-color: #8a2be2;
           border-style: dotted;
           border-width: 2px;
@@ -965,28 +1347,73 @@ class ActionNetwork extends HTMLElement {
           z-index: 1;
         }
         .edge {
-          stroke: #8b0000;
-          stroke-opacity: 0.6;
+          stroke:rgb(255, 84, 84);
+          stroke-opacity: 0.55;
           stroke-width: 2;
           stroke-dasharray: 4,4;
+          transition: stroke-opacity 0.2s, stroke-width 0.2s;
         }
         .edge-organiser {
-          stroke: #8a2be2;
-          stroke-opacity: 0.7;
-          stroke-width: 2.5;
+          stroke:rgb(179, 98, 255);
+          stroke-opacity: 0.55;
+          stroke-width: 1.5;
           stroke-dasharray: 8,4;
         }
         .edge-partof {
-          stroke: #8b0000;
-          stroke-opacity: 0.6;
+          stroke:rgb(255, 88, 88);
+          stroke-opacity: 0.55;
           stroke-width: 2;
           stroke-dasharray: 4,4;
         }
         .edge-anchor {
-          stroke: #8b0000;
-          stroke-opacity: 0.6;
+          stroke:rgb(255, 112, 112);
+          stroke-opacity: 0.55;
           stroke-width: 2;
           stroke-dasharray: 4,4;
+        }
+        .edge-place {
+          stroke:rgb(0, 200, 0);
+          stroke-opacity: 0.6;
+          stroke-width: 2;
+          stroke-dasharray: 6,3;
+        }
+        .edge-parent {
+          stroke:rgb(0, 150, 0);
+          stroke-opacity: 0.5;
+          stroke-width: 1.5;
+          stroke-dasharray: 3,3;
+        }
+        .edge-highlighted {
+          stroke-opacity: 1 !important;
+          stroke-width: 6 !important;
+          filter: drop-shadow(0 0 4px currentColor);
+        }
+        .edge-highlighted.edge-organiser {
+          stroke-width: 4 !important;
+        }
+        .node-selected {
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.8) !important;
+          border-color: #fff !important;
+          z-index: 1001 !important;
+          transform: scale(1.05);
+          transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .node-connected {
+          border-color:rgba(255, 255, 255, 0.48) 133, 132) !important;
+          opacity: 0.8 !important;
+          z-index: 1000 !important;
+        }
+        .node-minimized {
+          border-radius: 50% !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+        }
+        .node-minimized .node-title,
+        .node-minimized .node-content {
+          opacity: 0 !important;
+          pointer-events: none !important;
+          height: 0 !important;
+          overflow: hidden !important;
         }
         .empty-state {
           text-align: center;
@@ -1027,6 +1454,10 @@ class ActionNetwork extends HTMLElement {
           border: 2px dotted #8a2be2;
           background: rgba(138, 43, 226, 0.3);
         }
+        .legend-color.place {
+          border: 2px solid #008000;
+          background: rgba(0, 128, 0, 0.3);
+        }
         .legend-line {
           width: 30px;
           height: 2px;
@@ -1041,7 +1472,7 @@ class ActionNetwork extends HTMLElement {
         }
       </style>
       <div class="network-container" id="network-container">
-        <div class="empty-state">Loading network...</div>
+        <div class="empty-state">weaving ones and zeroes...</div>
       </div>
       <div class="legend">
         <div class="legend-item">
@@ -1059,6 +1490,10 @@ class ActionNetwork extends HTMLElement {
         <div class="legend-item">
           <div class="legend-line organiser"></div>
           <span>Organiser (violet)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color place"></div>
+          <span>Places (green)</span>
         </div>
       </div>
     `;
@@ -1126,6 +1561,12 @@ class ActionNetwork extends HTMLElement {
         const node = new Node(g._id, 'group', g.name, g, width / 2, height / 2);
         nodeMap.set(g._id, node);
         return node;
+      }),
+      ...this.places.map(p => {
+        const displayName = p.properties?.displayName || 'Unknown Place';
+        const node = new Node(p._id, 'place', displayName, p, width / 2, height / 2);
+        nodeMap.set(p._id, node);
+        return node;
       })
     ];
 
@@ -1190,6 +1631,75 @@ class ActionNetwork extends HTMLElement {
       }
     });
 
+    // Add edges from actions to places
+    this.actions.forEach(action => {
+      if (action.places) {
+        action.places.forEach(place => {
+          const placeId = place._id || place;
+          const sourceNode = nodeMap.get(action._id);
+          const targetNode = nodeMap.get(placeId);
+          if (sourceNode && targetNode) {
+            edges.push({
+              source: sourceNode,
+              target: targetNode,
+              type: 'place'
+            });
+          }
+        });
+      }
+    });
+
+    // Add edges from groups to places
+    this.groups.forEach(group => {
+      if (group.places) {
+        group.places.forEach(place => {
+          const placeId = place._id || place;
+          const sourceNode = nodeMap.get(group._id);
+          const targetNode = nodeMap.get(placeId);
+          if (sourceNode && targetNode) {
+            edges.push({
+              source: sourceNode,
+              target: targetNode,
+              type: 'place'
+            });
+          }
+        });
+      }
+    });
+
+    // Add edges from places to their parent places (show all parents in chain)
+    // Helper function to recursively add parent edges
+    const addParentEdges = (place, visited = new Set()) => {
+      if (visited.has(place._id)) {
+        return; // Avoid cycles
+      }
+      visited.add(place._id);
+
+      if (place.parents && place.parents.length > 0) {
+        place.parents.forEach(parent => {
+          const parentId = parent._id || parent;
+          const sourceNode = nodeMap.get(place._id);
+          const targetNode = nodeMap.get(parentId);
+          if (sourceNode && targetNode) {
+            edges.push({
+              source: sourceNode,
+              target: targetNode,
+              type: 'parent'
+            });
+            // Recursively add edges for the parent's parents
+            const parentPlace = this.places.find(p => (p._id || p) === parentId);
+            if (parentPlace) {
+              addParentEdges(parentPlace, visited);
+            }
+          }
+        });
+      }
+    };
+
+    this.places.forEach(place => {
+      addParentEdges(place);
+    });
+
     // Identify root nodes and set up anchor points
     // Root nodes: groups with no partOf, actions with no organisers and no partOf
     const rootNodes = [];
@@ -1220,7 +1730,11 @@ class ActionNetwork extends HTMLElement {
 
     // Create Network instance and start animation
     this.network = new Network(container, nodes, edges);
-    this.network.start();
+    // Store network reference on container for node hover handlers
+    container._network = this.network;
+    // Initialize all nodes as minimized (collapsed circle view)
+    this.network.updateHighlighting();
+    this.network.start(15000);
 
     // Add event listeners for button actions
     container.addEventListener('action-join', (event) => {

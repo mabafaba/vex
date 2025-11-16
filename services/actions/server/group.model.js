@@ -18,19 +18,9 @@ const groupSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      required: false
-    },
-    coordinates: {
-      type: [Number] // [longitude, latitude]
-    }
-  },
-  administrativeBoundaries: [{
+  places: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'AdministrativeBoundary'
+    ref: 'Place'
   }],
   partOf: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -53,9 +43,9 @@ const groupSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for geospatial queries (if location is provided)
-groupSchema.index({ location: '2dsphere' });
+// Indexes
 groupSchema.index({ partOf: 1 });
+groupSchema.index({ places: 1 });
 
 groupSchema.pre('save', function (next) {
   this.updatedAt = Date.now();

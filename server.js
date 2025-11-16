@@ -80,6 +80,7 @@ app.use(cookieParser());
 // Apply higher limit for actions and groups routes (for image uploads)
 app.use('/vex/actions', express.json({ limit: '12mb' }));
 app.use('/vex/groups', express.json({ limit: '12mb' }));
+app.use('/vex/places', express.json({ limit: '12mb' }));
 
 // Default limit for other routes
 app.use(express.json());
@@ -117,6 +118,7 @@ app.use('/vex/remotetouch', remotetouchService.router);
 
 app.use('/vex/actions', authenticate, actionsService.actionRouter);
 app.use('/vex/groups', authenticate, actionsService.groupRouter);
+app.use('/vex/places', authenticate, actionsService.placeRouter);
 
 // Serve actions service UI
 app.get('/vex/actions-ui', authenticate, (req, res) => {

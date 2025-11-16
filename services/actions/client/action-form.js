@@ -19,31 +19,13 @@ class ActionForm extends HTMLElement {
   }
 
   async loadGroups () {
-    try {
-      const response = await fetch('/vex/groups', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        this.groups = await response.json();
-        this.updateOrganisersSelect();
-      }
-    } catch (error) {
-      console.error('Error loading groups:', error);
-    }
+    // Groups are now loaded on-demand via the tag selector's search
+    // This method is kept for backward compatibility but no longer needed
   }
 
   async loadActions () {
-    try {
-      const response = await fetch('/vex/actions', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        this.actions = await response.json();
-        this.updatePartOfSelect();
-      }
-    } catch (error) {
-      console.error('Error loading actions:', error);
-    }
+    // Actions are now loaded on-demand via the tag selector's search
+    // This method is kept for backward compatibility but no longer needed
   }
 
   async loadAction (id) {
@@ -53,6 +35,11 @@ class ActionForm extends HTMLElement {
       });
       if (response.ok) {
         this.action = await response.json();
+        // Set exclude-id on action-tag-selector to prevent selecting self
+        const partOfSelector = this.shadowRoot.querySelector('action-tag-selector');
+        if (partOfSelector && id) {
+          partOfSelector.setAttribute('exclude-id', id);
+        }
         this.populateForm();
       }
     } catch (error) {
@@ -83,63 +70,49 @@ class ActionForm extends HTMLElement {
       this.renderPicturePreview();
     }
 
-    // Set location if available
-    const hasLocation = this.action.location && this.action.location.coordinates;
-    const hasBoundaries = this.action.administrativeBoundaries &&
-      this.action.administrativeBoundaries.length > 0;
-    if (hasLocation && hasBoundaries) {
-      const locationPicker = this.shadowRoot.querySelector('action-location-picker');
-      const boundary = this.action.administrativeBoundaries[
-        this.action.administrativeBoundaries.length - 1
-      ];
-      if (locationPicker) {
-        locationPicker.setLocation(this.action.location, boundary);
+    // Set places if available
+    const locationPicker = this.shadowRoot.querySelector('action-location-picker');
+    if (locationPicker && this.action.places && this.action.places.length > 0) {
+      // Extract Nominatim data from places and set in location picker
+      const locationDataArray = this.action.places
+        .filter(place => place.properties && place.properties.nominatimData)
+        .map(place => place.properties.nominatimData);
+
+      if (locationDataArray.length > 0) {
+        // Set selected locations in the picker
+        locationPicker.selectedLocations = locationDataArray;
+        locationPicker.updateLocationsDisplay();
       }
     }
 
     // Set organisers
-    const organisersSelect = this.shadowRoot.querySelector('#organisers');
-    if (this.action.organisers) {
-      Array.from(organisersSelect.options).forEach(option => {
-        option.selected = this.action.organisers.some(o => o._id === option.value);
+    const organisersSelector = this.shadowRoot.querySelector('group-tag-selector');
+    if (organisersSelector && this.action.organisers) {
+      // organisers might be populated objects or just IDs
+      const groups = this.action.organisers.map(org => {
+        if (typeof org === 'string') {
+          return { _id: org, name: 'Loading...' };
+        }
+        return { _id: org._id, name: org.name || 'Unknown' };
       });
+      organisersSelector.setSelectedGroups(groups);
     }
 
     // Set partOf
-    const partOfSelect = this.shadowRoot.querySelector('#partOf');
-    if (this.action.partOf) {
-      Array.from(partOfSelect.options).forEach(option => {
-        option.selected = this.action.partOf.some(a => a._id === option.value);
+    const partOfSelector = this.shadowRoot.querySelector('action-tag-selector');
+    if (partOfSelector && this.action.partOf) {
+      // partOf might be populated objects or just IDs
+      const actions = this.action.partOf.map(act => {
+        if (typeof act === 'string') {
+          return { _id: act, name: 'Loading...' };
+        }
+        return { _id: act._id, name: act.name || 'Unknown', date: act.date };
       });
+      partOfSelector.setSelectedActions(actions);
     }
   }
 
-  updateOrganisersSelect () {
-    const select = this.shadowRoot.querySelector('#organisers');
-    select.innerHTML = '<option value="">Select organisers...</option>';
-    this.groups.forEach(group => {
-      const option = document.createElement('option');
-      option.value = group._id;
-      option.textContent = group.name;
-      select.appendChild(option);
-    });
-  }
-
-  updatePartOfSelect () {
-    const select = this.shadowRoot.querySelector('#partOf');
-    select.innerHTML = '<option value="">Select actions this is part of...</option>';
-    // Filter out current action if editing
-    const filteredActions = this.action
-      ? this.actions.filter(a => a._id !== this.action._id)
-      : this.actions;
-    filteredActions.forEach(action => {
-      const option = document.createElement('option');
-      option.value = action._id;
-      const dateStr = new Date(action.date).toLocaleDateString();
-      option.textContent = `${action.name} (${dateStr})`;
-      select.appendChild(option);
-    });
-  }
+  // Removed updateOrganisersSelect and updatePartOfSelect - both now handled by tag selectors
 
   render () {
     this.shadowRoot.innerHTML = `
@@ -266,21 +239,25 @@ class ActionForm extends HTMLElement {
         </div>
         <div class="form-group">
           <label for="organisers">Organisers (Groups)</label>
-          <select id="organisers" multiple>
-            <option value="">Loading...</option>
-          </select>
+          <group-tag-selector id="organisers"></group-tag-selector>
         </div>
         <div class="form-group">
           <label for="partOf">Part Of (Other Actions)</label>
-          <select id="partOf" multiple>
-            <option value="">Loading...</option>
-          </select>
+          <action-tag-selector id="partOf"></action-tag-selector>
         </div>
         <button type="submit">${this.hasAttribute('action-id') ? 'Update' : 'Create'} Action</button>
       </form>
     `;
 
     this.shadowRoot.querySelector('form').addEventListener('submit', (e) => this.handleSubmit(e));
+
+    // Set exclude-id on action-tag-selector if editing
+    if (this.hasAttribute('action-id')) {
+      const partOfSelector = this.shadowRoot.querySelector('action-tag-selector');
+      if (partOfSelector) {
+        partOfSelector.setAttribute('exclude-id', this.getAttribute('action-id'));
+      }
+    }
 
     // Listen for location selection
     this.shadowRoot.addEventListener('location-selected', (e) => {
@@ -374,13 +351,16 @@ class ActionForm extends HTMLElement {
 
     try {
       const locationPicker = this.shadowRoot.querySelector('action-location-picker');
-      const locationData = locationPicker.getLocation();
+      const selectedLocations = locationPicker.selectedLocations || [];
 
-      if (!locationData || !locationData.coordinates) {
-        alert('Please select a location');
+      if (selectedLocations.length === 0) {
+        alert('Please select at least one location');
         button.disabled = false;
         return;
       }
+
+      // selectedLocations is already an array of Nominatim data objects
+      const locationData = selectedLocations;
 
       const formData = {
         name: this.shadowRoot.querySelector('#name').value,
@@ -388,12 +368,9 @@ class ActionForm extends HTMLElement {
         date: this.shadowRoot.querySelector('#date').value,
         contact: this.shadowRoot.querySelector('#contact').value,
         pictures: this.pictures,
-        location: {
-          coordinates: locationData.coordinates
-        },
-        selectedBoundaryId: locationData.administrativeBoundary?._id,
-        organisers: Array.from(this.shadowRoot.querySelector('#organisers').selectedOptions).map(o => o.value),
-        partOf: Array.from(this.shadowRoot.querySelector('#partOf').selectedOptions).map(o => o.value)
+        locationData: locationData,
+        organisers: this.shadowRoot.querySelector('group-tag-selector').getSelectedGroupIds(),
+        partOf: this.shadowRoot.querySelector('action-tag-selector').getSelectedActionIds()
       };
 
       const url = this.action

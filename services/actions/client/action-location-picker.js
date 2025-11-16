@@ -1,9 +1,8 @@
 class ActionLocationPicker extends HTMLElement {
   constructor () {
     super();
-    this.administrativeHierarchy = null;
-    this.selectedBoundary = null;
-    this.isOpen = false;
+    this.selectedLocations = []; // Array of Nomatim result objects
+    this.suggestions = [];
     this.isLoading = false;
     this.attachShadow({ mode: 'open' });
     this.render();
@@ -11,216 +10,90 @@ class ActionLocationPicker extends HTMLElement {
 
   render () {
     this.shadowRoot.innerHTML = `
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-      
       <style>
-        .location-button {
-          background: rgb(190, 173, 227);
-          color: rgb(90, 90, 90);
-          border: none;
-          border-radius: 25px;
-          padding: 8px 16px;
-          font-size: 12px;
-          cursor: pointer;
+        :host {
+          display: block;
+          width: 100%;
+        }
+        .location-selector-container {
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          padding: 8px;
+          min-height: 40px;
+          background: white;
+          position: relative;
+        }
+        .locations-container {
           display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: 6px;
+        }
+        .location-pill {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          gap: 8px;
-          transition: background-color 0.2s;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-          margin: auto;
-          min-width: 120px;
-        }
-
-        .location-button:hover {
-          background: #7b62b3;
-        }
-
-        .location-button i {
+          gap: 6px;
+          background: #007bff;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 16px;
           font-size: 14px;
         }
-
-        .location-button span {
-          font-size: 12px;
-          white-space: nowrap;
+        .location-pill .location-name {
+          max-width: 300px;
           overflow: hidden;
           text-overflow: ellipsis;
+          white-space: nowrap;
         }
-
-        .dialog-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: rgba(0, 0, 0, 0.5);
-          display: none;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        
-        .dialog-overlay.open {
-          display: flex;
-        }
-        
-        .dialog-content {
-          background: white;
-          padding: 20px;
-          border-radius: 8px;
-          max-width: 600px;
-          width: 90%;
-          max-height: 90vh;
-          overflow-y: auto;
-          position: relative;
-        }
-        
-        h2 {
-          margin-top: 0;
-        }
-        
-        .loading-overlay {
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          background: #FFF;
-          justify-content: center;
-          align-items: center;
-          z-index: 10000;
-        }
-
-        .loading-overlay.active {
-          display: flex;
-        }
-
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid #634E8F;
+        .location-pill .remove-btn {
+          background: rgba(255, 255, 255, 0.3);
+          border: none;
+          color: white;
           border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        .buttons {
-          margin-top: 20px;
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-        }
-        
-        button {
-          padding: 8px 16px;
-          border: none;
-          border-radius: 4px;
+          width: 18px;
+          height: 18px;
           cursor: pointer;
-        }
-        
-        button.primary {
-          background: #007bff;
-          color: white;
-        }
-        
-        button.secondary {
-          background: #6c757d;
-          color: white;
-        }
-
-        .close-button {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          background: none;
-          border: none;
-          font-size: 20px;
-          cursor: pointer;
-          padding: 5px;
-          color: #666;
-        }
-
-        .close-button:hover {
-          color: #333;
-        }
-
-        .boundary-selector {
-          margin-top: 20px;
-          display: none;
-        }
-
-        .boundary-selector.active {
-          display: block;
-        }
-
-        .boundary-option {
-          padding: 10px;
-          margin: 5px 0;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .boundary-option:hover {
-          background: #f0f0f0;
-        }
-
-        .boundary-option.selected {
-          background: #007bff;
-          color: white;
-          border-color: #007bff;
-        }
-
-        .boundary-level {
           font-size: 12px;
-          color: #666;
-          margin-top: 5px;
-        }
-
-        .boundary-option.selected .boundary-level {
-          color: rgba(255, 255, 255, 0.8);
-        }
-
-        .search-container {
-          position: relative;
-          margin-bottom: 15px;
-        }
-
-        .search-input-wrapper {
+          line-height: 1;
           display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          flex-shrink: 0;
+        }
+        .location-pill .remove-btn:hover {
+          background: rgba(255, 255, 255, 0.5);
+        }
+        .search-container {
+          display: flex;
+          gap: 4px;
           position: relative;
         }
-
-        #location-search {
+        #location-search-input {
           flex: 1;
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 4px 0 0 4px;
+          border: none;
+          outline: none;
+          padding: 4px 0;
           font-size: 14px;
         }
-
-        #search-button {
-          padding: 8px 16px;
-          border: 1px solid #ddd;
-          border-left: none;
-          border-radius: 0 4px 4px 0;
+        #location-search-button {
+          padding: 4px 12px;
           background: #007bff;
           color: white;
+          border: none;
+          border-radius: 4px;
           cursor: pointer;
+          font-size: 14px;
+          white-space: nowrap;
         }
-
-        #search-button:hover {
+        #location-search-button:hover {
           background: #0056b3;
         }
-
-        .search-results {
+        #location-search-button:disabled {
+          background: #ccc;
+          cursor: not-allowed;
+        }
+        .suggestions-dropdown {
           position: absolute;
           top: 100%;
           left: 0;
@@ -231,297 +104,98 @@ class ActionLocationPicker extends HTMLElement {
           border-radius: 0 0 4px 4px;
           max-height: 200px;
           overflow-y: auto;
-          z-index: 1001;
+          z-index: 1000;
           display: none;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
-        .search-results.active {
+        .suggestions-dropdown.show {
           display: block;
         }
-
-        .search-result-item {
-          padding: 10px;
+        .suggestion-item {
+          padding: 8px 12px;
           cursor: pointer;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid #f0f0f0;
         }
-
-        .search-result-item:hover {
-          background: #f0f0f0;
+        .suggestion-item:hover {
+          background: #f5f5f5;
         }
-
-        .search-result-item:last-child {
+        .suggestion-item:last-child {
           border-bottom: none;
         }
-
-        .search-result-name {
+        .suggestion-item.highlighted {
+          background: #007bff;
+          color: white;
+        }
+        .suggestion-item.highlighted:hover {
+          background: #0056b3;
+        }
+        .suggestion-name {
           font-weight: bold;
           margin-bottom: 4px;
         }
-
-        .search-result-details {
+        .suggestion-details {
           font-size: 12px;
+          opacity: 0.8;
+        }
+        .no-suggestions {
+          padding: 8px 12px;
           color: #666;
+          font-style: italic;
+        }
+        .loading {
+          padding: 8px 12px;
+          color: #666;
+          font-style: italic;
         }
       </style>
-      
-      <button class="location-button" title="Pick Location">
-        <i class="fas fa-location-dot"></i>
-        <span id="location-text">Pick Location</span>
-      </button>
-
-      <div class="dialog-overlay">
-        <div class="dialog-content">
-          <button class="close-button" title="Close">×</button>
-          <h2>Pick Location</h2>
-          
-          <div class="dialog-body">
-            <div class="search-container">
-              <div class="search-input-wrapper">
-                <input type="text" id="location-search" placeholder="Search for a place..." />
-                <button id="search-button" type="button">
-                  <i class="fas fa-search"></i>
-                </button>
-              </div>
-              <div id="search-results" class="search-results"></div>
-            </div>
-            
-            <div class="boundary-selector" id="boundary-selector">
-              <h3>Select Administrative Level</h3>
-              <div id="boundary-options"></div>
-            </div>
-            
-            <div class="loading-overlay">
-              <div class="spinner"></div>
-            </div>
-
-            <div class="buttons">
-              <button class="secondary" id="cancel-button">Cancel</button>
-              <button class="primary" id="confirm-button" disabled>Confirm Location</button>
-            </div>
-          </div>
+      <div class="location-selector-container">
+        <div class="locations-container" id="locations-container"></div>
+        <div class="search-container">
+          <input 
+            type="text" 
+            id="location-search-input" 
+            placeholder="Search for a place..."
+            autocomplete="off"
+          />
+          <button id="location-search-button" type="button">Search</button>
+          <div class="suggestions-dropdown" id="suggestions-dropdown"></div>
         </div>
       </div>
     `;
-    this.addEventListeners();
-    this.loadCurrentLocation();
+
+    this.setupEventListeners();
+    this.updateLocationsDisplay();
   }
 
-  async loadCurrentLocation () {
-    // If there's a selected boundary, show it
-    if (this.selectedBoundary) {
-      const locationText = this.selectedBoundary.properties.name || 'Location Selected';
-      this.shadowRoot.querySelector('#location-text').textContent = locationText;
-    }
-  }
-
-  toggleDialog () {
-    this.isOpen = !this.isOpen;
-    const overlay = this.shadowRoot.querySelector('.dialog-overlay');
-    overlay.classList.toggle('open', this.isOpen);
-
-    if (this.isOpen) {
-      // Reset state when opening
-      this.selectedBoundary = null;
-      this.locationCoordinates = null;
-      this.administrativeHierarchy = null;
-      const selector = this.shadowRoot.querySelector('#boundary-selector');
-      if (selector) {
-        selector.classList.remove('active');
-      }
-      const searchInput = this.shadowRoot.querySelector('#location-search');
-      if (searchInput) {
-        searchInput.value = '';
-      }
-      const searchResults = this.shadowRoot.querySelector('#search-results');
-      if (searchResults) {
-        searchResults.classList.remove('active');
-        searchResults.innerHTML = '';
-      }
-      this.updateLoadingState();
-    }
-  }
-
-  updateLoadingState () {
-    const loadingOverlay = this.shadowRoot.querySelector('.loading-overlay');
-    const confirmButton = this.shadowRoot.querySelector('#confirm-button');
-
-    loadingOverlay.classList.toggle('active', this.isLoading);
-    confirmButton.disabled = this.isLoading || !this.selectedBoundary;
-  }
-
-  async fetchBoundariesForLocation (lat, lng) {
-    try {
-      this.isLoading = true;
-      this.updateLoadingState();
-
-      // Store coordinates for later use
-      this.locationCoordinates = [lng, lat];
-
-      const response = await fetch(`/vex/administrative/point?lat=${lat}&lng=${lng}`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch administrative boundaries');
-      }
-
-      const data = await response.json();
-      this.administrativeHierarchy = data.boundaries;
-
-      // Show boundary selector
-      this.renderBoundaryOptions();
-    } catch (error) {
-      console.error('Error fetching boundaries:', error);
-      alert('Failed to fetch administrative boundaries. Please try again.');
-    } finally {
-      this.isLoading = false;
-      this.updateLoadingState();
-    }
-  }
-
-  renderBoundaryOptions () {
-    const selector = this.shadowRoot.querySelector('#boundary-selector');
-    const optionsContainer = this.shadowRoot.querySelector('#boundary-options');
-
-    selector.classList.add('active');
-    optionsContainer.innerHTML = '';
-
-    // Sort by admin level (lowest to highest)
-    const sortedBoundaries = [...this.administrativeHierarchy].sort((a, b) => {
-      return Number(a.properties.admin_level) - Number(b.properties.admin_level);
-    });
-
-    sortedBoundaries.forEach(boundary => {
-      const option = document.createElement('div');
-      option.className = 'boundary-option';
-      option.dataset.boundaryId = boundary._id;
-      option.innerHTML = `
-        <div><strong>${boundary.properties.name}</strong></div>
-        <div class="boundary-level">Admin Level: ${boundary.properties.admin_level}</div>
-      `;
-
-      option.addEventListener('click', () => {
-        // Remove previous selection
-        optionsContainer.querySelectorAll('.boundary-option').forEach(opt => {
-          opt.classList.remove('selected');
-        });
-
-        // Select this one
-        option.classList.add('selected');
-        this.selectedBoundary = boundary;
-        this.updateLoadingState();
-      });
-
-      optionsContainer.appendChild(option);
-    });
-  }
-
-  handleConfirmLocation () {
-    if (!this.selectedBoundary) {
-      alert('Please select an administrative level');
-      return;
-    }
-
-    if (!this.locationCoordinates) {
-      alert('Please search for and select a location');
-      return;
-    }
-
-    const location = {
-      coordinates: this.locationCoordinates,
-      administrativeBoundary: this.selectedBoundary
-    };
-
-    // Update button text
-    this.shadowRoot.querySelector('#location-text').textContent = this.selectedBoundary.properties.name;
-
-    // Dispatch event with location data
-    this.dispatchEvent(new CustomEvent('location-selected', {
-      bubbles: true,
-      composed: true,
-      detail: location
-    }));
-
-    this.toggleDialog();
-  }
-
-  addEventListeners () {
-    this.shadowRoot.querySelector('.location-button').addEventListener('click', () => this.toggleDialog());
-    this.shadowRoot.querySelector('.close-button').addEventListener('click', () => this.toggleDialog());
-    this.shadowRoot.querySelector('#cancel-button').addEventListener('click', () => this.toggleDialog());
-    this.shadowRoot.querySelector('#confirm-button').addEventListener('click', () => this.handleConfirmLocation());
-
-    this.shadowRoot.querySelector('.dialog-overlay').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) {
-        this.toggleDialog();
-      }
-    });
-
-    // Search functionality
-    const searchInput = this.shadowRoot.querySelector('#location-search');
-    const searchButton = this.shadowRoot.querySelector('#search-button');
+  setupEventListeners () {
+    const input = this.shadowRoot.querySelector('#location-search-input');
+    const button = this.shadowRoot.querySelector('#location-search-button');
 
     // Search on button click
-    if (searchButton) {
-      searchButton.addEventListener('click', () => {
-        const query = searchInput.value.trim();
-        if (query) {
-          this.searchLocation(query);
-        }
-      });
-    }
+    button.addEventListener('click', () => {
+      const query = input.value.trim();
+      if (query.length >= 3) {
+        this.searchLocation(query);
+      }
+    });
 
     // Search on Enter key
-    if (searchInput) {
-      searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          const query = searchInput.value.trim();
-          if (query) {
-            this.searchLocation(query);
-          }
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = input.value.trim();
+        if (query.length >= 3) {
+          this.searchLocation(query);
         }
-      });
-
-      // Hide results when clicking outside
-      searchInput.addEventListener('blur', () => {
-        // Delay to allow click on results
-        setTimeout(() => {
-          const resultsContainer = this.shadowRoot.querySelector('#search-results');
-          if (resultsContainer) {
-            resultsContainer.classList.remove('active');
-          }
-        }, 200);
-      });
-    }
-  }
-
-  getLocation () {
-    return this.selectedBoundary ? {
-      coordinates: this.locationCoordinates,
-      administrativeBoundary: this.selectedBoundary
-    } : null;
-  }
-
-  setLocation (location, boundary) {
-    if (location && location.coordinates) {
-      this.locationCoordinates = location.coordinates;
-      this.selectedBoundary = boundary;
-      if (boundary && boundary.properties) {
-        this.shadowRoot.querySelector('#location-text').textContent = boundary.properties.name;
-      } else if (boundary && typeof boundary === 'object' && boundary._id) {
-        // If boundary is just an ID reference, fetch it
-        fetch(`/vex/administrative/${boundary._id}`)
-          .then(res => res.json())
-          .then(boundaryData => {
-            this.selectedBoundary = boundaryData;
-            if (boundaryData.properties) {
-              this.shadowRoot.querySelector('#location-text').textContent = boundaryData.properties.name;
-            }
-          })
-          .catch(err => console.error('Error loading boundary:', err));
       }
-    }
+    });
+
+    // Click outside to close suggestions
+    document.addEventListener('click', (e) => {
+      if (!this.shadowRoot.contains(e.target)) {
+        this.hideSuggestions();
+      }
+    });
   }
 
   async searchLocation (query) {
@@ -531,11 +205,10 @@ class ActionLocationPicker extends HTMLElement {
 
     try {
       this.isLoading = true;
-      this.updateLoadingState();
-
+      this.updateSearchButton();
       // Use Nominatim (OpenStreetMap) geocoding API
       const baseUrl = 'https://nominatim.openstreetmap.org/search';
-      const params = `format=json&polygon_geojson=1&q=${encodeURIComponent(query)}&limit=5`;
+      const params = `format=json&polygon_geojson=1&q=${encodeURIComponent(query)}&limit=10`;
       const url = `${baseUrl}?${params}`;
       const response = await fetch(
         url,
@@ -551,66 +224,124 @@ class ActionLocationPicker extends HTMLElement {
       }
 
       const results = await response.json();
-      this.displaySearchResults(results);
+      this.suggestions = results;
+      this.isLoading = false;
+      this.updateSearchButton();
+      this.renderSuggestions();
+      this.showSuggestions();
     } catch (error) {
       console.error('Error searching location:', error);
-      alert('Failed to search location. Please try again.');
-    } finally {
+      this.suggestions = [];
       this.isLoading = false;
-      this.updateLoadingState();
+      this.updateSearchButton();
+      this.renderSuggestions();
+      this.showSuggestions();
     }
   }
 
-  displaySearchResults (results) {
-    const resultsContainer = this.shadowRoot.querySelector('#search-results');
-    if (!resultsContainer) {
+  updateSearchButton () {
+    const button = this.shadowRoot.querySelector('#location-search-button');
+    button.disabled = this.isLoading;
+    button.textContent = this.isLoading ? 'Searching...' : 'Search';
+  }
+
+  renderSuggestions () {
+    const dropdown = this.shadowRoot.querySelector('#suggestions-dropdown');
+    dropdown.innerHTML = '';
+
+    if (this.isLoading) {
+      const loading = document.createElement('div');
+      loading.className = 'loading';
+      loading.textContent = 'Searching...';
+      dropdown.appendChild(loading);
       return;
     }
 
-    resultsContainer.innerHTML = '';
-
-    if (results.length === 0) {
-      resultsContainer.innerHTML = '<div class="search-result-item">No results found</div>';
-      resultsContainer.classList.add('active');
+    if (this.suggestions.length === 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'no-suggestions';
+      noResults.textContent = 'No results found';
+      dropdown.appendChild(noResults);
       return;
     }
 
-    results.forEach(result => {
+    this.suggestions.forEach((result, index) => {
       const item = document.createElement('div');
-      item.className = 'search-result-item';
+      item.className = 'suggestion-item';
       item.innerHTML = `
-        <div class="search-result-name">${this.escapeHtml(result.display_name)}</div>
-        <div class="search-result-details">Lat: ${result.lat}, Lon: ${result.lon}</div>
+        <div class="suggestion-name">${this.escapeHtml(result.display_name)}</div>
+        <div class="suggestion-details">Lat: ${result.lat}, Lon: ${result.lon}</div>
       `;
+      item.dataset.index = index;
 
       item.addEventListener('click', () => {
-        this.selectSearchResult(result);
+        this.selectLocation(result);
       });
 
-      resultsContainer.appendChild(item);
+      dropdown.appendChild(item);
     });
-
-    resultsContainer.classList.add('active');
   }
 
-  selectSearchResult (result) {
-    const lat = parseFloat(result.lat);
-    const lon = parseFloat(result.lon);
+  showSuggestions () {
+    const dropdown = this.shadowRoot.querySelector('#suggestions-dropdown');
+    const input = this.shadowRoot.querySelector('#location-search-input');
+    const hasText = input.value.trim().length > 0;
 
-    // Hide search results
-    const resultsContainer = this.shadowRoot.querySelector('#search-results');
-    if (resultsContainer) {
-      resultsContainer.classList.remove('active');
+    if (hasText && (this.suggestions.length > 0 || this.isLoading)) {
+      dropdown.classList.add('show');
+    } else {
+      dropdown.classList.remove('show');
+    }
+  }
+
+  hideSuggestions () {
+    const dropdown = this.shadowRoot.querySelector('#suggestions-dropdown');
+    dropdown.classList.remove('show');
+  }
+
+  selectLocation (location) {
+    // Check if already selected (by display_name and coordinates)
+    const isDuplicate = this.selectedLocations.some(loc =>
+      loc.display_name === location.display_name &&
+      loc.lat === location.lat &&
+      loc.lon === location.lon
+    );
+
+    if (isDuplicate) {
+      return;
     }
 
-    // Clear search input
-    const searchInput = this.shadowRoot.querySelector('#location-search');
-    if (searchInput) {
-      searchInput.value = result.display_name;
-    }
+    this.selectedLocations.push(location);
+    this.updateLocationsDisplay();
+    this.shadowRoot.querySelector('#location-search-input').value = '';
+    this.hideSuggestions();
+    this.dispatchChangeEvent();
+  }
 
-    // Fetch boundaries for the selected location
-    this.fetchBoundariesForLocation(lat, lon);
+  removeLocation (index) {
+    this.selectedLocations.splice(index, 1);
+    this.updateLocationsDisplay();
+    this.dispatchChangeEvent();
+  }
+
+  updateLocationsDisplay () {
+    const container = this.shadowRoot.querySelector('#locations-container');
+    container.innerHTML = '';
+
+    this.selectedLocations.forEach((location, index) => {
+      const pill = document.createElement('div');
+      pill.className = 'location-pill';
+      pill.innerHTML = `
+        <span class="location-name">${this.escapeHtml(location.display_name)}</span>
+        <button type="button" class="remove-btn" data-index="${index}">×</button>
+      `;
+
+      pill.querySelector('.remove-btn').addEventListener('click', () => {
+        this.removeLocation(index);
+      });
+
+      container.appendChild(pill);
+    });
   }
 
   escapeHtml (text) {
@@ -621,7 +352,65 @@ class ActionLocationPicker extends HTMLElement {
     div.textContent = text;
     return div.innerHTML;
   }
+
+  dispatchChangeEvent () {
+    this.dispatchEvent(new CustomEvent('location-selected', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        locations: this.selectedLocations,
+        coordinates: this.selectedLocations.length > 0
+          ? [parseFloat(this.selectedLocations[0].lon), parseFloat(this.selectedLocations[0].lat)]
+          : null
+      }
+    }));
+  }
+
+  // Public methods for getting/setting values
+  getLocation () {
+    if (this.selectedLocations.length === 0) {
+      return null;
+    }
+
+    // Return the first location's data
+    const firstLocation = this.selectedLocations[0];
+    return {
+      coordinates: [parseFloat(firstLocation.lon), parseFloat(firstLocation.lat)],
+      locationData: firstLocation // Full Nomatim result
+    };
+  }
+
+  getLocations () {
+    return this.selectedLocations.map(loc => ({
+      coordinates: [parseFloat(loc.lon), parseFloat(loc.lat)],
+      locationData: loc
+    }));
+  }
+
+  setLocation (location, boundary) {
+    // For backward compatibility - if location is provided, convert to Nomatim format
+    if (location && location.coordinates) {
+      const [lon, lat] = location.coordinates;
+      const locationData = {
+        display_name: boundary?.properties?.name || `Location (${lat}, ${lon})`,
+        lat: lat.toString(),
+        lon: lon.toString(),
+        ...location.locationData
+      };
+      this.selectedLocations = [locationData];
+      this.updateLocationsDisplay();
+    } else {
+      this.selectedLocations = [];
+      this.updateLocationsDisplay();
+    }
+  }
+
+  clear () {
+    this.selectedLocations = [];
+    this.updateLocationsDisplay();
+    this.shadowRoot.querySelector('#location-search-input').value = '';
+    this.hideSuggestions();
+  }
 }
 
 customElements.define('action-location-picker', ActionLocationPicker);
-

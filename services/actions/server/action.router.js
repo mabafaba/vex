@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
+const http = require('http');
 const router = express.Router();
 const Action = require('./action.model');
-const { AdministrativeBoundary } = require('../../administrativelevels/server/administrativeboundary.model');
 const sanitizeHtml = require('sanitize-html');
 
 router.use(express.json({ limit: '12mb' }));
@@ -10,49 +10,83 @@ router.use(express.json({ limit: '12mb' }));
 // Serve static files from client directory
 router.use('/static', express.static(path.join(__dirname, '../client')));
 
-// Helper function to get administrative boundaries for a location
-const getAdministrativeBoundaries = async (longitude, latitude) => {
-  const boundaries = await AdministrativeBoundary.find({
-    geometry: {
-      $geoIntersects: {
-        $geometry: {
-          type: 'Point',
-          coordinates: [longitude, latitude]
-        }
-      }
-    }
-  })
-    .sort({ 'properties.admin_level': -1 })
-    .select('_id properties.name properties.admin_level')
-    .lean();
+// Helper function to get place IDs from places service
+const getPlaceIds = async (locationDataArray, req) => {
+  if (!locationDataArray || !Array.isArray(locationDataArray) || locationDataArray.length === 0) {
+    return [];
+  }
 
-  return boundaries.map(b => b._id);
+  return new Promise((resolve) => {
+    const host = req.get('host') || 'localhost:3005';
+    const protocol = req.protocol;
+    let port = 3005; // Default port
+    let hostname = 'localhost';
+
+    if (host.includes(':')) {
+      const parts = host.split(':');
+      hostname = parts[0];
+      port = parseInt(parts[1], 10) || (protocol === 'https' ? 443 : 80);
+    } else {
+      hostname = host;
+      port = protocol === 'https' ? 443 : 80;
+    }
+
+    const postData = JSON.stringify({ nominatimData: locationDataArray });
+
+    const options = {
+      hostname: hostname,
+      port: port,
+      path: '/vex/places/create-or-get',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+        'Cookie': req.headers.cookie || ''
+      }
+    };
+
+    const httpReq = http.request(options, (httpRes) => {
+      let data = '';
+      httpRes.on('data', (chunk) => {
+        data += chunk;
+      });
+      httpRes.on('end', () => {
+        if (httpRes.statusCode === 200) {
+          try {
+            const result = JSON.parse(data);
+            resolve(result.placeIds || []);
+          } catch (error) {
+            console.error('Error parsing places service response:', error);
+            resolve([]);
+          }
+        } else {
+          console.error('Error getting place IDs from places service:', httpRes.statusCode, data);
+          resolve([]);
+        }
+      });
+    });
+
+    httpReq.on('error', (error) => {
+      console.error('Error calling places service:', error);
+      resolve([]);
+    });
+
+    httpReq.write(postData);
+    httpReq.end();
+  });
 };
 
 // Create a new action
 router.post('/', async (req, res) => {
   try {
-    const { name, description, date, contact, picture, pictures, location, organisers, partOf, selectedBoundaryId } = req.body;
+    const { name, description, date, contact, picture, pictures, locationData, organisers, partOf } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({ error: 'Name and date are required' });
     }
 
-    if (!location || !location.coordinates || location.coordinates.length !== 2) {
-      return res.status(400).json({ error: 'Valid location coordinates are required' });
-    }
-
-    const [longitude, latitude] = location.coordinates;
-
-    // Get administrative boundaries for the location
-    let administrativeBoundaries = [];
-    if (selectedBoundaryId) {
-      // Store only the selected boundary
-      administrativeBoundaries = [selectedBoundaryId];
-    } else {
-      // Fallback: get all boundaries (for backward compatibility)
-      administrativeBoundaries = await getAdministrativeBoundaries(longitude, latitude);
-    }
+    // Get place IDs from places service
+    const placeIds = await getPlaceIds(locationData || [], req);
 
     // Validate organisers (groups) exist
     if (organisers && organisers.length > 0) {
@@ -86,11 +120,7 @@ router.post('/', async (req, res) => {
       date: new Date(date),
       contact: contact ? sanitizeHtml(contact) : '',
       pictures: picturesArray,
-      location: {
-        type: 'Point',
-        coordinates: [longitude, latitude]
-      },
-      administrativeBoundaries,
+      places: placeIds,
       organisers: organisers || [],
       partOf: partOf || [],
       createdBy: req.user?.id
@@ -98,10 +128,42 @@ router.post('/', async (req, res) => {
 
     await action.save();
 
+    // Populate places for response
+    await action.populate('places', 'properties.displayName geometry');
+
     res.status(201).json(action);
   } catch (error) {
     console.error('Error creating action:', error);
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Search actions by name
+router.get('/search', async (req, res) => {
+  try {
+    const { q, excludeId } = req.query;
+    if (!q || q.trim() === '') {
+      return res.status(200).json([]);
+    }
+
+    const query = {
+      name: { $regex: q, $options: 'i' }
+    };
+
+    // Exclude a specific action (useful when editing)
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+
+    const actions = await Action.find(query)
+      .select('_id name date')
+      .sort({ date: 1 })
+      .limit(10);
+
+    res.status(200).json(actions);
+  } catch (error) {
+    console.error('Error searching actions:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -132,7 +194,7 @@ router.get('/', async (req, res) => {
     const actions = await Action.find(query)
       .populate('organisers', 'name')
       .populate('partOf', 'name date')
-      .populate('administrativeBoundaries', 'properties.name properties.admin_level')
+      .populate('places', 'properties.displayName geometry')
       .populate('createdBy', 'username')
       .sort({ date: 1 });
 
@@ -148,8 +210,8 @@ router.get('/:id', async (req, res) => {
   try {
     const action = await Action.findById(req.params.id)
       .populate('organisers', 'name description link contact')
-      .populate('partOf', 'name date location')
-      .populate('administrativeBoundaries', 'properties.name properties.admin_level')
+      .populate('partOf', 'name date places')
+      .populate('places', 'properties.displayName geometry properties.nominatimData')
       .populate('createdBy', 'username');
 
     if (!action) {
@@ -166,24 +228,17 @@ router.get('/:id', async (req, res) => {
 // Update an action
 router.put('/:id', async (req, res) => {
   try {
-    const { name, description, date, contact, picture, pictures, location, organisers, partOf, selectedBoundaryId } = req.body;
+    const { name, description, date, contact, picture, pictures, locationData, organisers, partOf } = req.body;
 
     const action = await Action.findById(req.params.id);
     if (!action) {
       return res.status(404).json({ error: 'Action not found' });
     }
 
-    // Update location and administrative boundaries if location changed
-    let administrativeBoundaries = action.administrativeBoundaries;
-    if (location && location.coordinates && location.coordinates.length === 2) {
-      if (selectedBoundaryId) {
-        // Store only the selected boundary
-        administrativeBoundaries = [selectedBoundaryId];
-      } else {
-        // Fallback: get all boundaries (for backward compatibility)
-        const [longitude, latitude] = location.coordinates;
-        administrativeBoundaries = await getAdministrativeBoundaries(longitude, latitude);
-      }
+    // Update places if locationData is provided
+    if (locationData !== undefined) {
+      const placeIds = await getPlaceIds(locationData || [], req);
+      action.places = placeIds;
     }
 
     // Validate organisers if provided
@@ -222,13 +277,6 @@ router.put('/:id', async (req, res) => {
       // Backward compatibility
       action.pictures = picture ? [picture] : [];
     }
-    if (location !== undefined && location.coordinates) {
-      action.location = {
-        type: 'Point',
-        coordinates: location.coordinates
-      };
-      action.administrativeBoundaries = administrativeBoundaries;
-    }
     if (organisers !== undefined) {
       action.organisers = organisers;
     }
@@ -237,6 +285,9 @@ router.put('/:id', async (req, res) => {
     }
 
     await action.save();
+
+    // Populate places for response
+    await action.populate('places', 'properties.displayName geometry');
 
     res.status(200).json(action);
   } catch (error) {

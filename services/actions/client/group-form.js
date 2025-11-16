@@ -16,17 +16,8 @@ class GroupForm extends HTMLElement {
   }
 
   async loadGroups () {
-    try {
-      const response = await fetch('/vex/groups', {
-        credentials: 'include'
-      });
-      if (response.ok) {
-        this.groups = await response.json();
-        this.updatePartOfSelect();
-      }
-    } catch (error) {
-      console.error('Error loading groups:', error);
-    }
+    // Groups are now loaded on-demand via the tag selector's search
+    // This method is kept for backward compatibility but no longer needed
   }
 
   async loadGroup (id) {
@@ -36,6 +27,11 @@ class GroupForm extends HTMLElement {
       });
       if (response.ok) {
         this.group = await response.json();
+        // Set exclude-id on group-tag-selector to prevent selecting self
+        const partOfSelector = this.shadowRoot.querySelector('group-tag-selector');
+        if (partOfSelector && id) {
+          partOfSelector.setAttribute('exclude-id', id);
+        }
         this.populateForm();
       }
     } catch (error) {
@@ -51,43 +47,36 @@ class GroupForm extends HTMLElement {
     this.shadowRoot.querySelector('#link').value = this.group.link || '';
     this.shadowRoot.querySelector('#contact').value = this.group.contact || '';
 
-    // Set location if available
-    const hasLocation = this.group.location && this.group.location.coordinates;
-    const hasBoundaries = this.group.administrativeBoundaries &&
-      this.group.administrativeBoundaries.length > 0;
-    if (hasLocation && hasBoundaries) {
-      const locationPicker = this.shadowRoot.querySelector('action-location-picker');
-      const boundary = this.group.administrativeBoundaries[
-        this.group.administrativeBoundaries.length - 1
-      ];
-      if (locationPicker) {
-        locationPicker.setLocation(this.group.location, boundary);
+    // Set places if available
+    const locationPicker = this.shadowRoot.querySelector('action-location-picker');
+    if (locationPicker && this.group.places && this.group.places.length > 0) {
+      // Extract Nominatim data from places and set in location picker
+      const locationDataArray = this.group.places
+        .filter(place => place.properties && place.properties.nominatimData)
+        .map(place => place.properties.nominatimData);
+      
+      if (locationDataArray.length > 0) {
+        // Set selected locations in the picker
+        locationPicker.selectedLocations = locationDataArray;
+        locationPicker.updateLocationsDisplay();
       }
     }
 
     // Set partOf
-    const partOfSelect = this.shadowRoot.querySelector('#partOf');
-    if (this.group.partOf) {
-      Array.from(partOfSelect.options).forEach(option => {
-        option.selected = this.group.partOf.some(g => g._id === option.value);
+    const partOfSelector = this.shadowRoot.querySelector('group-tag-selector');
+    if (partOfSelector && this.group.partOf) {
+      // partOf might be populated objects or just IDs
+      const groups = this.group.partOf.map(grp => {
+        if (typeof grp === 'string') {
+          return { _id: grp, name: 'Loading...' };
+        }
+        return { _id: grp._id, name: grp.name || 'Unknown' };
       });
+      partOfSelector.setSelectedGroups(groups);
     }
   }
 
-  updatePartOfSelect () {
-    const select = this.shadowRoot.querySelector('#partOf');
-    select.innerHTML = '<option value="">Select groups this is part of...</option>';
-    // Filter out current group if editing
-    const filteredGroups = this.group
-      ? this.groups.filter(g => g._id !== this.group._id)
-      : this.groups;
-    filteredGroups.forEach(group => {
-      const option = document.createElement('option');
-      option.value = group._id;
-      option.textContent = group.name;
-      select.appendChild(option);
-    });
-  }
+  // Removed updatePartOfSelect - groups are now handled by tag selector
 
   render () {
     this.shadowRoot.innerHTML = `
@@ -169,16 +158,22 @@ class GroupForm extends HTMLElement {
         </div>
         <div class="form-group">
           <label for="partOf">Part Of (Other Groups)</label>
-          <select id="partOf" multiple>
-            <option value="">Loading...</option>
-          </select>
+          <group-tag-selector id="partOf"></group-tag-selector>
         </div>
         <button type="submit">${this.hasAttribute('group-id') ? 'Update' : 'Create'} Group</button>
       </form>
     `;
 
     this.shadowRoot.querySelector('form').addEventListener('submit', (e) => this.handleSubmit(e));
-    
+
+    // Set exclude-id on group-tag-selector if editing
+    if (this.hasAttribute('group-id')) {
+      const partOfSelector = this.shadowRoot.querySelector('group-tag-selector');
+      if (partOfSelector) {
+        partOfSelector.setAttribute('exclude-id', this.getAttribute('group-id'));
+      }
+    }
+
     // Listen for location selection
     this.shadowRoot.addEventListener('location-selected', (e) => {
       this.selectedLocation = e.detail;
@@ -192,34 +187,19 @@ class GroupForm extends HTMLElement {
 
     try {
       const locationPicker = this.shadowRoot.querySelector('action-location-picker');
-      let location = null;
-      
-      const locationData = locationPicker.getLocation();
-      if (locationData && locationData.coordinates) {
-        location = {
-          coordinates: locationData.coordinates
-        };
-      } else if (this.group && this.group.location) {
-        // Keep existing location if not changed
-        location = {
-          coordinates: this.group.location.coordinates
-        };
-      }
+      const selectedLocations = locationPicker.selectedLocations || [];
 
       const formData = {
         name: this.shadowRoot.querySelector('#name').value,
         description: this.shadowRoot.querySelector('#description').value,
         link: this.shadowRoot.querySelector('#link').value,
         contact: this.shadowRoot.querySelector('#contact').value,
-        partOf: Array.from(this.shadowRoot.querySelector('#partOf').selectedOptions).map(o => o.value)
+        partOf: this.shadowRoot.querySelector('group-tag-selector').getSelectedGroupIds()
       };
 
-      if (location) {
-        formData.location = location;
-        const locationData = locationPicker.getLocation();
-        if (locationData && locationData.administrativeBoundary) {
-          formData.selectedBoundaryId = locationData.administrativeBoundary._id;
-        }
+      // Add locationData if locations are selected
+      if (selectedLocations.length > 0) {
+        formData.locationData = selectedLocations;
       }
 
       const url = this.group

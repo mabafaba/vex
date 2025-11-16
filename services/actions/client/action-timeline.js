@@ -135,8 +135,8 @@ class ActionTimeline extends HTMLElement {
         ? action.organisers.map(o => o.name || o).join(', ')
         : 'No organisers';
       
-      const location = action.administrativeBoundaries && action.administrativeBoundaries.length > 0
-        ? action.administrativeBoundaries[action.administrativeBoundaries.length - 1].properties.name
+      const location = action.places && action.places.length > 0
+        ? action.places.map(p => p.properties?.displayName || 'Unknown place').join(', ')
         : 'Location not set';
 
       return `

@@ -21,20 +21,9 @@ const actionSchema = new mongoose.Schema({
   pictures: [{
     type: String // URL or path to picture
   }],
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      required: true
-    },
-    coordinates: {
-      type: [Number], // [longitude, latitude]
-      required: true
-    }
-  },
-  administrativeBoundaries: [{
+  places: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'AdministrativeBoundary'
+    ref: 'Place'
   }],
   organisers: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -61,11 +50,11 @@ const actionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for geospatial queries
-actionSchema.index({ location: '2dsphere' });
+// Indexes
 actionSchema.index({ date: 1 });
 actionSchema.index({ organisers: 1 });
 actionSchema.index({ partOf: 1 });
+actionSchema.index({ places: 1 });
 
 actionSchema.pre('save', function (next) {
   this.updatedAt = Date.now();

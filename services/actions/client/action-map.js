@@ -328,42 +328,17 @@ class ActionMap extends HTMLElement {
   }
 
   async getBoundaryData (item) {
-    if (item.administrativeBoundaries && item.administrativeBoundaries.length > 0) {
-      const WORLDWIDE_BOUNDARY_ID = '68b82e48308a57671dadafb0';
-
-      // Check boundaries from most specific (last) to least specific (first)
-      // Skip worldwide boundary
-      for (let i = item.administrativeBoundaries.length - 1; i >= 0; i--) {
-        const boundary = item.administrativeBoundaries[i];
-
-        // Extract boundary ID
-        let boundaryId = null;
-        if (typeof boundary === 'string') {
-          boundaryId = boundary;
-        } else if (boundary && boundary._id) {
-          boundaryId = typeof boundary._id === 'string' ? boundary._id : boundary._id.toString();
-        } else if (boundary && boundary.$oid) {
-          boundaryId = boundary.$oid;
-        } else if (boundary && typeof boundary === 'object') {
-          boundaryId = boundary.toString();
-        }
-
-        // Skip worldwide boundary
-        if (boundaryId === WORLDWIDE_BOUNDARY_ID) {
-          continue;
-        }
-
-        if (boundaryId) {
-          try {
-            const response = await fetch(`/vex/administrative/${boundaryId}/geometry`, {
-              credentials: 'include'
-            });
-            if (response.ok) {
-              return await response.json();
-            }
-          } catch (error) {
-            console.error('Error fetching boundary geometry:', error);
-          }
+    // Use places - look for places with polygon/multipolygon geometry (admin boundaries)
+    if (item.places && item.places.length > 0) {
+      // Find the first place with polygon geometry (admin boundaries are polygons)
+      for (const place of item.places) {
+        if (place.geometry && (place.geometry.type === 'MultiPolygon' || place.geometry.type === 'Polygon')) {
+          // Return as GeoJSON Feature
+          return {
+            type: 'Feature',
+            geometry: place.geometry,
+            properties: place.properties || {}
+          };
         }
       }
     }
@@ -432,51 +407,25 @@ class ActionMap extends HTMLElement {
   }
 
   async getPosition (item) {
-    // First try to get position from administrative boundaries
-    if (item.administrativeBoundaries && item.administrativeBoundaries.length > 0) {
-      // Get the most specific boundary (usually the last one)
-      const boundary = item.administrativeBoundaries[item.administrativeBoundaries.length - 1];
-
-      // Extract boundary ID - handle different formats:
-      // - Populated: {_id: "...", properties: {...}}
-      // - Unpopulated string: "68b8335c46b050e64437a3fb"
-      // - Unpopulated object: {"$oid": "68b8335c46b050e64437a3fb"}
-      let boundaryId = null;
-      if (typeof boundary === 'string') {
-        boundaryId = boundary;
-      } else if (boundary && boundary._id) {
-        boundaryId = typeof boundary._id === 'string' ? boundary._id : boundary._id.toString();
-      } else if (boundary && boundary.$oid) {
-        boundaryId = boundary.$oid;
-      } else if (boundary && typeof boundary === 'object') {
-        // Try to get the ID from the object itself
-        boundaryId = boundary.toString();
-      }
-
-      if (boundaryId) {
-        try {
-          // Fetch the boundary geometry
-          const response = await fetch(`/vex/administrative/${boundaryId}/geometry`, {
-            credentials: 'include'
-          });
-          if (response.ok) {
-            const boundaryData = await response.json();
-            if (boundaryData.geometry && boundaryData.geometry.coordinates) {
-              // Calculate centroid of the MultiPolygon
-              const centroid = this.calculateCentroid(boundaryData.geometry);
-              return { lat: centroid[1], lng: centroid[0] };
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching boundary geometry:', error);
+    // Get position from places
+    if (item.places && item.places.length > 0) {
+      // First try to find a Point geometry (most direct)
+      for (const place of item.places) {
+        if (place.geometry && place.geometry.type === 'Point' && place.geometry.coordinates) {
+          const [lng, lat] = place.geometry.coordinates;
+          return { lat, lng };
         }
       }
-    }
 
-    // Fallback to location coordinates if available
-    if (item.location && item.location.coordinates) {
-      const [lng, lat] = item.location.coordinates;
-      return { lat, lng };
+      // If no Point, try to calculate centroid from polygon geometry
+      for (const place of item.places) {
+        if (place.geometry && (place.geometry.type === 'MultiPolygon' || place.geometry.type === 'Polygon')) {
+          const centroid = this.calculateCentroid(place.geometry);
+          if (centroid[0] !== 0 || centroid[1] !== 0) {
+            return { lat: centroid[1], lng: centroid[0] };
+          }
+        }
+      }
     }
 
     return null;
@@ -508,14 +457,12 @@ class ActionMap extends HTMLElement {
   }
 
   getLocationName (item) {
-    if (item.administrativeBoundaries && item.administrativeBoundaries.length > 0) {
-      const boundary = item.administrativeBoundaries[item.administrativeBoundaries.length - 1];
-      // Check if boundary is populated (has properties)
-      if (boundary && boundary.properties && boundary.properties.name) {
-        return boundary.properties.name;
+    if (item.places && item.places.length > 0) {
+      // Use the first place's display name
+      const place = item.places[0];
+      if (place.properties && place.properties.displayName) {
+        return place.properties.displayName;
       }
-      // If not populated, we could fetch it, but for now return null
-      // The name will be missing but the marker will still show
     }
     return null;
   }
