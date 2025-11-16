@@ -466,7 +466,7 @@ class Network {
     this.idealEdgeLength = 250;
     this.maxSpeed = 20;
     this.damping = 0.8;
-    this.gravity = 0.0;
+    this.gravity = 0.01;
     this.windStrength = 0.0001; // Base wind strength
     this.windDirection = 0; // Wind direction in radians
     this.windTime = 0; // Time counter for wind fluctuation
@@ -774,8 +774,7 @@ class Network {
       }
     });
 
-    // Update container height based on node positions for scrolling
-    this.updateContainerHeight();
+    // Container height is fixed at 3x viewport height
 
     // Update edge positions
     if (!skipRender) {
@@ -822,7 +821,9 @@ class Network {
       return;
     }
 
-    let maxY = 600; // Minimum height
+    // Use viewport height as minimum
+    const viewportHeight = this.container.clientHeight || window.innerHeight - 50;
+    let maxY = viewportHeight;
     this.nodes.forEach(node => {
       if (node.element && !node.parked) {
         const nodeBottom = node.y + node.height;
@@ -835,7 +836,7 @@ class Network {
     // Add padding at bottom
     maxY += 100;
     // Update container height if needed
-    const currentHeight = parseInt(this.container.style.height) || 600;
+    const currentHeight = parseInt(this.container.style.height) || viewportHeight;
     if (maxY > currentHeight) {
       this.container.style.height = `${maxY}px`;
     }
@@ -1187,14 +1188,16 @@ class ActionNetwork extends HTMLElement {
       <style>
         :host {
           display: block;
-          padding: 20px;
+          width: 100%;
+          height: 100%;
+          padding: 0;
+          margin: 0;
         }
         .network-container {
           width: 100%;
-          min-height: 600px;
-          height: 600px;
-          border: 2px dashed #8b0000;
-          border-radius: 8px;
+          height: 300vh;
+          border: none;
+          border-radius: 0;
           position: relative;
           overflow-x: hidden;
           overflow-y: auto;
