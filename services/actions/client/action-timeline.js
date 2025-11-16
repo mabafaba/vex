@@ -43,7 +43,7 @@ class ActionTimeline extends HTMLElement {
           top: 0;
           bottom: 0;
           width: 2px;
-          background: #ddd;
+          background: #8b0000;
           transform: translateX(-50%);
         }
         .timeline-item {
@@ -60,24 +60,27 @@ class ActionTimeline extends HTMLElement {
           padding-left: 40px;
         }
         .timeline-content {
-          background: white;
-          border: 1px solid #ddd;
+          background: rgba(138, 43, 226, 0.15);
+          border: 2px dashed #8b0000;
           border-radius: 8px;
           padding: 20px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(138, 43, 226, 0.3);
+          color: #fff;
+          font-family: 'Courier New', monospace;
         }
         .timeline-date {
           font-weight: bold;
-          color: #007bff;
+          color: #8a2be2;
           margin-bottom: 10px;
         }
         .timeline-title {
           font-size: 18px;
           font-weight: bold;
           margin-bottom: 10px;
+          color: #fff;
         }
         .timeline-description {
-          color: #666;
+          color: #ccc;
           margin-bottom: 10px;
         }
         .timeline-meta {
@@ -89,10 +92,11 @@ class ActionTimeline extends HTMLElement {
           position: absolute;
           width: 20px;
           height: 20px;
-          background: #007bff;
-          border: 3px solid white;
+          background: #8a2be2;
+          border: 3px solid #000;
           border-radius: 50%;
           top: 20px;
+          box-shadow: 0 0 8px rgba(138, 43, 226, 0.5);
         }
         .timeline-item:nth-child(odd) .timeline-marker {
           right: -10px;
@@ -103,13 +107,15 @@ class ActionTimeline extends HTMLElement {
         .empty-state {
           text-align: center;
           padding: 40px;
-          color: #999;
+          color: #8a2be2;
+          font-family: 'Courier New', monospace;
         }
         .action-picture {
           max-width: 100%;
           height: auto;
           border-radius: 4px;
           margin: 10px 0;
+          border: 1px dashed #8b0000;
         }
       </style>
       <div class="timeline" id="timeline-container">

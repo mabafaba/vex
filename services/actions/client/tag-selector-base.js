@@ -67,12 +67,14 @@ class TagSelectorBase extends HTMLElement {
           width: 100%;
         }
         .tag-selector-container {
-          border: 1px solid #ddd;
+          border: 2px dashed #8b0000;
           border-radius: 4px;
           padding: 8px;
           min-height: 40px;
-          background: white;
+          background: rgba(138, 43, 226, 0.15);
           position: relative;
+          color: #fff;
+          font-family: 'Courier New', monospace;
         }
         .tags-container {
           display: flex;
@@ -84,11 +86,12 @@ class TagSelectorBase extends HTMLElement {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: #007bff;
+          background: rgba(138, 43, 226, 0.3);
           color: white;
           padding: 4px 8px;
           border-radius: 16px;
           font-size: 14px;
+          border: 1px dashed #8b0000;
         }
         .tag-pill .tag-name {
           max-width: 200px;
@@ -124,21 +127,27 @@ class TagSelectorBase extends HTMLElement {
           outline: none;
           padding: 4px 0;
           font-size: 14px;
+          background: transparent;
+          color: #fff;
+          font-family: 'Courier New', monospace;
+        }
+        #search-input::placeholder {
+          color: #999;
         }
         .suggestions-dropdown {
           position: absolute;
           top: 100%;
           left: 0;
           right: 0;
-          background: white;
-          border: 1px solid #ddd;
+          background: rgba(0, 0, 0, 0.95);
+          border: 2px dashed #8b0000;
           border-top: none;
           border-radius: 0 0 4px 4px;
           max-height: 200px;
           overflow-y: auto;
           z-index: 1000;
           display: none;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 6px rgba(138, 43, 226, 0.3);
         }
         .suggestions-dropdown.show {
           display: block;
@@ -146,13 +155,14 @@ class TagSelectorBase extends HTMLElement {
         .suggestion-item {
           padding: 8px 12px;
           cursor: pointer;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid rgba(138, 43, 226, 0.2);
           display: flex;
           justify-content: space-between;
           align-items: center;
+          color: #fff;
         }
         .suggestion-item:hover {
-          background: #f5f5f5;
+          background: rgba(138, 43, 226, 0.2);
         }
         .suggestion-item:last-child {
           border-bottom: none;
@@ -162,11 +172,11 @@ class TagSelectorBase extends HTMLElement {
           cursor: not-allowed;
         }
         .suggestion-item.highlighted {
-          background: #007bff;
+          background: rgba(138, 43, 226, 0.5);
           color: white;
         }
         .suggestion-item.highlighted:hover {
-          background: #0056b3;
+          background: rgba(138, 43, 226, 0.6);
         }
         .suggestion-content {
           flex: 1;
@@ -177,9 +187,9 @@ class TagSelectorBase extends HTMLElement {
           margin-left: 8px;
         }
         .edit-btn {
-          background: #28a745;
+          background: rgba(138, 43, 226, 0.3);
           color: white;
-          border: none;
+          border: 1px dashed #8b0000;
           border-radius: 4px;
           padding: 4px 8px;
           cursor: pointer;
@@ -188,7 +198,8 @@ class TagSelectorBase extends HTMLElement {
           align-items: center;
           gap: 4px;
           opacity: 0;
-          transition: opacity 0.2s;
+          transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+          font-family: 'Courier New', monospace;
         }
         .suggestion-item:hover .edit-btn {
           opacity: 1;
@@ -197,14 +208,15 @@ class TagSelectorBase extends HTMLElement {
           opacity: 1;
         }
         .edit-btn:hover {
-          background: #218838;
+          background: rgba(138, 43, 226, 0.5);
+          border-color: #8a2be2;
         }
         .edit-btn:active {
-          background: #1e7e34;
+          background: rgba(138, 43, 226, 0.6);
         }
         .no-suggestions {
           padding: 8px 12px;
-          color: #666;
+          color: #999;
           font-style: italic;
         }
       </style>

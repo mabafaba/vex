@@ -138,15 +138,26 @@ class GroupForm extends HTMLElement {
           display: block;
           margin-bottom: 5px;
           font-weight: bold;
+          color: #8a2be2;
         }
         input[type="text"],
         textarea,
         select {
           width: 100%;
           padding: 8px;
-          border: 1px solid #ddd;
+          border: 1px dashed #8b0000;
           border-radius: 4px;
           box-sizing: border-box;
+          background: rgba(138, 43, 226, 0.1);
+          color: #fff;
+          font-family: 'Courier New', monospace;
+        }
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+          outline: none;
+          border-color: #8a2be2;
+          box-shadow: 0 0 4px rgba(138, 43, 226, 0.3);
         }
         textarea {
           min-height: 100px;
@@ -156,24 +167,28 @@ class GroupForm extends HTMLElement {
           min-height: 120px;
         }
         button {
-          background: #007bff;
+          background: rgba(138, 43, 226, 0.3);
           color: white;
           padding: 10px 20px;
-          border: none;
+          border: 1px dashed #8b0000;
           border-radius: 4px;
           cursor: pointer;
           font-size: 16px;
+          font-family: 'Courier New', monospace;
+          transition: background 0.2s, border-color 0.2s;
         }
         button:hover {
-          background: #0056b3;
+          background: rgba(138, 43, 226, 0.5);
+          border-color: #8a2be2;
         }
         button:disabled {
-          background: #ccc;
+          background: rgba(138, 43, 226, 0.1);
           cursor: not-allowed;
+          opacity: 0.5;
         }
         .optional {
           font-weight: normal;
-          color: #666;
+          color: #999;
         }
       </style>
       <form>

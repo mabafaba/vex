@@ -458,14 +458,14 @@ class Network {
     this.nodes = nodes;
     this.edges = edges;
     this.centerAttractionStrength = 0.0;
-    this.collisionRepulsionStrength = 10; // Strong repulsion force for overlapping nodes
+    this.collisionRepulsionStrength = 1; // Strong repulsion force for overlapping nodes
     this.collisionPadding = 30;
     this.collisionDetectionEnabled = true; // Flag to enable/disable collision detection
-    this.edgeAttractionStrength = 0.01;
-    this.unconnectedRepulsionStrength = 0.01;
-    this.idealEdgeLength = 150;
-    this.maxSpeed = 2;
-    this.damping = 0.9;
+    this.edgeAttractionStrength = 0.005;
+    this.unconnectedRepulsionStrength = 0.0001;
+    this.idealEdgeLength = 250;
+    this.maxSpeed = 20;
+    this.damping = 0.8;
     this.gravity = 0.0;
     this.windStrength = 0.0001; // Base wind strength
     this.windDirection = 0; // Wind direction in radians
@@ -484,11 +484,7 @@ class Network {
       this.connections.set(node.id, new Set());
     });
 
-    // Build edge length map: key is "sourceId-targetId" or "targetId-sourceId" (undirected)
-    this.edgeLengths = new Map();
-    const baseLength = this.idealEdgeLength;
-
-    // First, build connections map and calculate node degrees
+    // Build connections map and calculate node degrees
     this.edges.forEach(edge => {
       // Skip anchor edges (self-referential)
       if (edge.isAnchor) {
@@ -501,116 +497,11 @@ class Network {
       this.connections.get(targetId).add(sourceId);
     });
 
-    // Calculate and store node degrees
+    // Calculate and store node degrees (used for node sizing)
     this.nodes.forEach(node => {
       const degree = this.connections.get(node.id)?.size || 0;
       node.degree = degree;
     });
-
-    // Group edges by both source and target nodes to calculate edge order from both perspectives
-    const edgesByNode = new Map();
-    this.edges.forEach(edge => {
-      if (edge.isAnchor) {
-        return;
-      }
-      const sourceId = edge.source.id;
-      const targetId = edge.target.id;
-
-      // Group by source
-      if (!edgesByNode.has(sourceId)) {
-        edgesByNode.set(sourceId, []);
-      }
-      edgesByNode.get(sourceId).push({ edge, direction: 'source' });
-
-      // Group by target (for reverse direction)
-      if (!edgesByNode.has(targetId)) {
-        edgesByNode.set(targetId, []);
-      }
-      edgesByNode.get(targetId).push({ edge, direction: 'target' });
-    });
-
-    // Calculate edge order from each node's perspective
-    const edgeOrderFromSource = new Map();
-    const edgeOrderFromTarget = new Map();
-
-    edgesByNode.forEach((edgeInfos) => {
-      // Sort edges by connected node ID for consistent ordering
-      edgeInfos.sort((a, b) => {
-        const idA = a.direction === 'source' ? a.edge.target.id : a.edge.source.id;
-        const idB = b.direction === 'source' ? b.edge.target.id : b.edge.source.id;
-        return idA < idB ? -1 : idA > idB ? 1 : 0;
-      });
-
-      // Assign order indices: first edge = 1, second = 2, third = 3, etc.
-      edgeInfos.forEach((edgeInfo, index) => {
-        const order = index + 1; // 1, 2, 3, etc.
-        const sourceId = edgeInfo.edge.source.id;
-        const targetId = edgeInfo.edge.target.id;
-
-        if (edgeInfo.direction === 'source') {
-          const key = `${sourceId}-${targetId}`;
-          edgeOrderFromSource.set(key, order);
-        } else {
-          const key = `${targetId}-${sourceId}`;
-          edgeOrderFromTarget.set(key, order);
-        }
-      });
-    });
-
-    // Assign lengths to edges considering both source and target perspectives
-    // Use the maximum order from both perspectives to determine length
-    this.edges.forEach(edge => {
-      if (edge.isAnchor) {
-        return;
-      }
-      const sourceId = edge.source.id;
-      const targetId = edge.target.id;
-      const key1 = `${sourceId}-${targetId}`;
-      const key2 = `${targetId}-${sourceId}`;
-
-      const orderFromSource = edgeOrderFromSource.get(key1) || 1;
-      const orderFromTarget = edgeOrderFromTarget.get(key2) || 1;
-
-      // Use the maximum order from both perspectives
-      const maxOrder = Math.max(orderFromSource, orderFromTarget);
-      const length = baseLength * maxOrder; // 1x, 2x, 3x, etc.
-
-      // Store length for both directions (undirected edge)
-      this.edgeLengths.set(key1, length);
-      this.edgeLengths.set(key2, length);
-    });
-
-    // Also store length on edge objects for reference
-    this.edges.forEach(edge => {
-      if (edge.isAnchor) {
-        return;
-      }
-      const sourceId = edge.source.id;
-      const targetId = edge.target.id;
-      const key = `${sourceId}-${targetId}`;
-      edge.length = this.edgeLengths.get(key) || baseLength;
-    });
-
-    // Log edge lengths for debugging
-    // eslint-disable-next-line no-console
-    this.edges.forEach(edge => {
-      if (!edge.isAnchor && edge.length) {
-        const sourceName = edge.source.data?.name || edge.source.id;
-        const targetName = edge.target.data?.name || edge.target.id;
-        const sourceId = edge.source.id;
-        const targetId = edge.target.id;
-        const key1 = `${sourceId}-${targetId}`;
-        const key2 = `${targetId}-${sourceId}`;
-        const orderFromSource = edgeOrderFromSource.get(key1) || 1;
-        const orderFromTarget = edgeOrderFromTarget.get(key2) || 1;
-        const multiplier = (edge.length / baseLength).toFixed(1);
-      }
-    });
-  }
-
-  getEdgeLength (sourceId, targetId) {
-    const key = `${sourceId}-${targetId}`;
-    return this.edgeLengths.get(key) || this.idealEdgeLength;
   }
 
   areConnected (nodeId1, nodeId2) {
@@ -671,8 +562,8 @@ class Network {
           return;
         }
 
-        // Get the assigned length for this edge
-        const maxRopeLength = this.getEdgeLength(node.id, connectedId);
+        // Use ideal edge length for all edges
+        const maxRopeLength = this.idealEdgeLength;
 
         const otherCenter = connectedNode.getCenter();
         const dx = otherCenter.x - nodeCenter.x;
@@ -783,7 +674,7 @@ class Network {
         if (overlap > 0 && distance > 0) {
           // Calculate strong repulsion force proportional to overlap
           // Force increases with overlap amount
-          const forceStrength = this.collisionRepulsionStrength * overlap * overlap; // Quadratic for stronger response
+          const forceStrength = overlap > 0 ? this.collisionRepulsionStrength : 0;
 
           // Normalize direction vector
           const dirX = dx / distance;
@@ -806,7 +697,7 @@ class Network {
         } else if (overlap > 0 && distance === 0) {
           // Nodes are exactly on top of each other, apply random repulsion
           const angle = Math.random() * Math.PI * 2;
-          const forceStrength = this.collisionRepulsionStrength * overlap * overlap;
+          const forceStrength = this.collisionRepulsionStrength;
           const dirX = Math.cos(angle);
           const dirY = Math.sin(angle);
 
@@ -903,8 +794,16 @@ class Network {
     const wasCollisionEnabled = this.collisionDetectionEnabled;
     this.collisionDetectionEnabled = false;
 
+    // Update loading message periodically during pre-calculation
+    const updateInterval = Math.max(1, Math.floor(numTicks / 10));
     for (let i = 0; i < numTicks; i++) {
       this.update(true); // Skip rendering during pre-calculation
+
+      // Update message periodically
+      if (i % updateInterval === 0 && this._actionNetwork) {
+        const progress = Math.floor((i / numTicks) * 100);
+        this._actionNetwork.updateLoadingMessage(`letting forces settle (${progress}%)`);
+      }
     }
 
     // Re-enable collision detection after pre-calculation
@@ -1088,8 +987,11 @@ class Network {
 
     let size;
 
-    // If node has a photo background, set size to 100px
-    if (node.imageUrl) {
+    // Places are smaller in circle mode
+    if (node.type === 'place') {
+      size = 30;
+    } else if (node.imageUrl) {
+      // If node has a photo background, set size to 100px
       size = 100;
     } else {
       // Calculate size based on logarithmic scale of degree
@@ -1244,9 +1146,18 @@ class ActionNetwork extends HTMLElement {
     this.render();
   }
 
+  updateLoadingMessage (message) {
+    const loadingEl = this.shadowRoot.getElementById('loading-message');
+    if (loadingEl) {
+      loadingEl.innerHTML = message + '<span class="loading-dots"></span>';
+    }
+  }
+
   async connectedCallback () {
+    this.updateLoadingMessage('gathering threads of action');
     await this.loadData();
-    this.renderNetwork();
+    this.updateLoadingMessage('weaving connections');
+    await this.renderNetwork();
   }
 
   async loadData () {
@@ -1511,6 +1422,24 @@ class ActionNetwork extends HTMLElement {
           color: #8a2be2;
           font-family: 'Courier New', monospace;
         }
+        .loading-dots {
+          display: inline-block;
+        }
+        .loading-dots::after {
+          content: '...';
+          animation: dots 1.5s steps(4, end) infinite;
+        }
+        @keyframes dots {
+          0%, 20% {
+            content: '.';
+          }
+          40% {
+            content: '..';
+          }
+          60%, 100% {
+            content: '...';
+          }
+        }
         .legend {
           position: absolute;
           top: 10px;
@@ -1562,7 +1491,7 @@ class ActionNetwork extends HTMLElement {
         }
       </style>
       <div class="network-container" id="network-container">
-        <div class="empty-state">weaving ones and zeroes...</div>
+        <div class="empty-state" id="loading-message">weaving ones and zeroes<span class="loading-dots"></span></div>
       </div>
       <div class="legend">
         <div class="legend-item">
@@ -1601,6 +1530,7 @@ class ActionNetwork extends HTMLElement {
     // Load D3 if needed
     // eslint-disable-next-line no-undef
     if (typeof d3 === 'undefined') {
+      this.updateLoadingMessage('summoning the tools of visualization');
       if (!document.querySelector('script[src*="d3.v7"]')) {
         await new Promise((resolve) => {
           const script = document.createElement('script');
@@ -1616,6 +1546,7 @@ class ActionNetwork extends HTMLElement {
         }
       }
     }
+    this.updateLoadingMessage('letting forces settle');
     this.createD3Network(container);
   }
 
@@ -1822,9 +1753,19 @@ class ActionNetwork extends HTMLElement {
     this.network = new Network(container, nodes, edges);
     // Store network reference on container for node hover handlers
     container._network = this.network;
+    // Store reference to ActionNetwork for loading message updates
+    this.network._actionNetwork = this;
     // Initialize all nodes as minimized (collapsed circle view)
     this.network.updateHighlighting();
-    this.network.start(15000);
+    this.network.start(1000);
+
+    // Clear loading message after a brief delay to let animation start
+    setTimeout(() => {
+      const loadingEl = this.shadowRoot.getElementById('loading-message');
+      if (loadingEl) {
+        loadingEl.style.display = 'none';
+      }
+    }, 100);
 
     // Add event listeners for button actions
     container.addEventListener('action-join', (event) => {
