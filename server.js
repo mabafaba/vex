@@ -158,6 +158,15 @@ app.get('/vex/manifest.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'manifest.json'));
 });
 
+// Service Worker configuration endpoint
+// Set ENABLE_SERVICE_WORKER=false to disable service worker caching
+app.get('/vex/sw-config.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'no-cache');
+  const enabled = process.env.ENABLE_SERVICE_WORKER !== 'false';
+  res.send(`window.SERVICE_WORKER_ENABLED = ${enabled};`);
+});
+
 app.get('/vex/sw.js', (req, res) => {
   res.setHeader('Service-Worker-Allowed', '/vex/');
   res.setHeader('Cache-Control', 'no-cache');

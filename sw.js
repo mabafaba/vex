@@ -3,6 +3,29 @@ const CACHE_NAME = 'vex-v1.0.2';
 const STATIC_CACHE_NAME = 'vex-static-v1.0.2';
 const DYNAMIC_CACHE_NAME = 'vex-dynamic-v1.0.2';
 
+// Check if service worker should be enabled
+let SERVICE_WORKER_ENABLED = true;
+
+// Fetch config on startup
+async function checkServiceWorkerEnabled() {
+  try {
+    const response = await fetch('/vex/sw-config.js', { cache: 'no-store' });
+    const script = await response.text();
+    // Extract the value from the script
+    const match = script.match(/SERVICE_WORKER_ENABLED\s*=\s*(true|false)/);
+    if (match) {
+      SERVICE_WORKER_ENABLED = match[1] === 'true';
+    }
+  } catch (error) {
+    console.error('Failed to fetch service worker config:', error);
+    // Default to enabled if config can't be loaded
+    SERVICE_WORKER_ENABLED = true;
+  }
+}
+
+// Check config immediately
+checkServiceWorkerEnabled();
+
 // Files to cache immediately
 const STATIC_ASSETS = [
   // '/vex/',
@@ -49,7 +72,23 @@ const API_CACHE_PATTERNS = [
 ];
 
 // Install event - cache static assets
-self.addEventListener('install', (event) => {
+self.addEventListener('install', async (event) => {
+  // Check if service worker is enabled
+  await checkServiceWorkerEnabled();
+  
+  if (!SERVICE_WORKER_ENABLED) {
+    console.log('Service Worker is disabled. Skipping installation...');
+    // Skip waiting and activate immediately to unregister
+    self.skipWaiting();
+    // Clear all caches
+    event.waitUntil(
+      caches.keys().then(cacheNames => {
+        return Promise.all(cacheNames.map(name => caches.delete(name)));
+      })
+    );
+    return;
+  }
+  
   // eslint-disable-next-line no-console
   console.log('Service Worker installing...');
   event.waitUntil(
@@ -68,7 +107,22 @@ self.addEventListener('install', (event) => {
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', async (event) => {
+  // Check if service worker is enabled
+  await checkServiceWorkerEnabled();
+  
+  if (!SERVICE_WORKER_ENABLED) {
+    console.log('Service Worker is disabled. Unregistering and clearing caches...');
+    // Clear all caches
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    // Unregister this service worker
+    if (self.registration) {
+      self.registration.unregister();
+    }
+    return;
+  }
+  
   // eslint-disable-next-line no-console
   console.log('Service Worker activating...');
   event.waitUntil(
@@ -88,7 +142,18 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - serve from cache with network fallback
-self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', async (event) => {
+  // Re-check config periodically (every 10 requests or so)
+  if (Math.random() < 0.1) {
+    await checkServiceWorkerEnabled();
+  }
+  
+  // If service worker is disabled, pass through all requests without caching
+  if (!SERVICE_WORKER_ENABLED) {
+    // Don't intercept - let requests go directly to network
+    return;
+  }
+  
   console.log('fetch intercepted by service worker for', event.request.url);
   const { request } = event;
   const url = new URL(request.url);
@@ -137,6 +202,11 @@ async function handleGetRequest (request, url) {
 
 // Cache first strategy
 async function cacheFirst (request, cacheName) {
+  // If disabled, don't use cache, just fetch
+  if (!SERVICE_WORKER_ENABLED) {
+    return fetch(request);
+  }
+  
   try {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
@@ -158,6 +228,11 @@ async function cacheFirst (request, cacheName) {
 
 // Network first strategy
 async function networkFirst (request, cacheName) {
+  // If disabled, don't cache, just fetch
+  if (!SERVICE_WORKER_ENABLED) {
+    return fetch(request);
+  }
+  
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {

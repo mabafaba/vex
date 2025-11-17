@@ -54,10 +54,43 @@
     <script src="/vex/vertex/static/vex-app.js"></script>
     
     <!-- PWA Service Worker Registration -->
+    <script src="/vex/sw-config.js"></script>
     <script>
       // Register service worker for PWA functionality
+      // Check if service worker is enabled via config
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+          // Load service worker config
+          // If config wasn't loaded, default to enabled for backward compatibility
+          if (typeof window.SERVICE_WORKER_ENABLED === 'undefined') {
+            try {
+              const response = await fetch('/vex/sw-config.js');
+              const script = await response.text();
+              eval(script);
+            } catch (error) {
+              console.warn('Could not load service worker config, defaulting to enabled');
+              window.SERVICE_WORKER_ENABLED = true;
+            }
+          }
+
+          // If service worker is disabled, unregister any existing ones
+          if (window.SERVICE_WORKER_ENABLED === false) {
+            console.log('Service Worker is disabled. Unregistering any existing service workers...');
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const registration of registrations) {
+              await registration.unregister();
+              console.log('Service Worker unregistered:', registration.scope);
+            }
+            // Clear all caches
+            if ('caches' in window) {
+              const cacheNames = await caches.keys();
+              await Promise.all(cacheNames.map(name => caches.delete(name)));
+              console.log('All caches cleared');
+            }
+            return;
+          }
+
+          // Service worker is enabled, register it
           navigator.serviceWorker.register('/vex/sw.js', { scope: '/vex/' })
             .then((registration) => {
               console.log('Service Worker registered successfully:', registration.scope);

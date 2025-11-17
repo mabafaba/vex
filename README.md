@@ -196,12 +196,40 @@ The following services are exceptions to the tree rule and can be used by multip
 - **Bug fixes**: Look for `bug` labels
 - **Documentation**: Search for `documentation` labels
 
+## 🔧 Configuration
+
+### Disable Service Worker Caching
+
+To completely disable service worker caching and ensure all clients always fetch the latest data:
+
+Set the environment variable:
+```bash
+export ENABLE_SERVICE_WORKER=false
+```
+
+Or in your `.env` file:
+```
+ENABLE_SERVICE_WORKER=false
+```
+
+When disabled:
+- Service workers will not be registered for new clients
+- Existing service workers will be unregistered
+- All caches will be cleared
+- All requests will go directly to the network (no caching)
+
+**Note:** After changing this setting, existing clients may need to refresh their browser to pick up the change.
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
 **MongoDB Connection Error:**
 - Ensure MongoDB is running locally or check your Atlas connection string
+
+**Service Worker Caching Issues:**
+- If you're seeing stale data, set `ENABLE_SERVICE_WORKER=false` to disable caching
+- Clear browser cache and service workers: Open DevTools → Application → Clear storage
 - Verify your `.env` file has the correct `MONGODB_URI`
 
 **Port Already in Use:**
