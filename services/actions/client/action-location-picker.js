@@ -20,7 +20,7 @@ class ActionLocationPicker extends HTMLElement {
           border-radius: 4px;
           padding: 8px;
           min-height: 40px;
-          background: white;
+          background: transparent;
           position: relative;
         }
         .locations-container {

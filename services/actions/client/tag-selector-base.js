@@ -337,16 +337,20 @@ class TagSelectorBase extends HTMLElement {
       const actions = document.createElement('div');
       actions.className = 'suggestion-actions';
 
-      // Add edit button
-      const editBtn = document.createElement('button');
-      editBtn.className = 'edit-btn';
-      editBtn.type = 'button';
-      editBtn.innerHTML = '✏️ Edit';
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.handleEditClick(item);
-      });
-      actions.appendChild(editBtn);
+      // Only show edit button if NOT in edit mode
+      const inEditMode = this.isInEditMode();
+      if (!inEditMode) {
+        // Add edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.type = 'button';
+        editBtn.innerHTML = '✏️ Edit';
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.handleEditClick(item);
+        });
+        actions.appendChild(editBtn);
+      }
 
       itemElement.appendChild(actions);
 
@@ -354,13 +358,56 @@ class TagSelectorBase extends HTMLElement {
         itemElement.addEventListener('click', (e) => {
           // Don't select if clicking on edit button
           if (!e.target.closest('.edit-btn')) {
-            this.selectItem(item);
+            // In edit mode, clicking the suggestion triggers edit instead of selecting
+            if (inEditMode) {
+              this.handleEditClick(item);
+              // Close suggestions and clear input when editing
+              this.shadowRoot.querySelector('#search-input').value = '';
+              this.hideSuggestions();
+            } else {
+              this.selectItem(item);
+            }
           }
         });
       }
 
       dropdown.appendChild(itemElement);
     });
+  }
+
+  // Check if this tag selector is inside an edit component
+  isInEditMode () {
+    // Check if we're inside an action-edit or group-edit component
+    // We need to traverse up through shadow DOM boundaries
+    let current = this;
+    const visited = new Set();
+    
+    while (current) {
+      // Avoid infinite loops
+      if (visited.has(current)) break;
+      visited.add(current);
+      
+      // Check if current is an edit component
+      if (current.tagName === 'ACTION-EDIT' || current.tagName === 'GROUP-EDIT') {
+        return true;
+      }
+      
+      // Get the root node (could be document or shadow root)
+      const root = current.getRootNode();
+      
+      // If we're in a shadow root, get the host
+      if (root && root.host && root.host !== current) {
+        current = root.host;
+      } else if (current.parentElement) {
+        current = current.parentElement;
+      } else if (current.parentNode && current.parentNode !== root) {
+        current = current.parentNode;
+      } else {
+        break;
+      }
+    }
+    
+    return false;
   }
 
   // Override this method in subclasses to handle edit clicks
@@ -422,7 +469,15 @@ class TagSelectorBase extends HTMLElement {
     if (highlighted) {
       const index = parseInt(highlighted.dataset.index);
       if (this.suggestions[index]) {
-        this.selectItem(this.suggestions[index]);
+        // In edit mode, pressing Enter triggers edit instead of selecting
+        if (this.isInEditMode()) {
+          this.handleEditClick(this.suggestions[index]);
+          // Close suggestions and clear input when editing
+          this.shadowRoot.querySelector('#search-input').value = '';
+          this.hideSuggestions();
+        } else {
+          this.selectItem(this.suggestions[index]);
+        }
       }
     }
   }

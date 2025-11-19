@@ -1163,20 +1163,39 @@ class ActionNetwork extends HTMLElement {
 
   async loadData () {
     try {
+      console.log('Loading data...');
+      // store time
+      const startTime = Date.now();
       const [actionsRes, groupsRes, placesRes] = await Promise.all([
         fetch('/vex/actions', { credentials: 'include' }),
         fetch('/vex/groups', { credentials: 'include' }),
         fetch('/vex/places', { credentials: 'include' })
       ]);
-
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log(`Data loaded in ${duration}ms`);
       if (actionsRes.ok) {
+        const startTime = Date.now();
         this.actions = await actionsRes.json();
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        console.log(`Actions json parsed in ${duration}ms`);
       }
       if (groupsRes.ok) {
+        const startTime = Date.now();
         this.groups = await groupsRes.json();
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        console.log(`Groups json parsed in ${duration}ms`);
+        // log size in mb
+        console.log('Groups size:', groupsRes.headers.get('content-length') / 1024 / 1024, 'MB');
       }
       if (placesRes.ok) {
+        const startTime = Date.now();
         this.places = await placesRes.json();
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        console.log(`Places json parsed in ${duration}ms`);
       }
     } catch (error) {
       console.error('Error loading data:', error);

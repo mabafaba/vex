@@ -110,7 +110,7 @@ router.post('/', async (req, res) => {
     await group.save();
 
     // Populate places for response
-    await group.populate('places', 'properties.displayName geometry');
+    await group.populate('places', 'properties.displayName');
 
     res.status(201).json(group);
   } catch (error) {
@@ -160,7 +160,7 @@ router.get('/', async (req, res) => {
 
     const groups = await Group.find(query)
       .populate('partOf', 'name')
-      .populate('places', 'properties.displayName geometry')
+      .populate('places', 'properties.displayName')
       .populate('createdBy', 'username')
       .sort({ name: 1 });
 
@@ -176,7 +176,7 @@ router.get('/:id', async (req, res) => {
   try {
     const group = await Group.findById(req.params.id)
       .populate('partOf', 'name description link contact')
-      .populate('places', 'properties.displayName geometry properties.nominatimData')
+      .populate('places', 'properties.displayName properties.nominatimData')
       .populate('createdBy', 'username');
 
     if (!group) {
@@ -233,7 +233,7 @@ router.put('/:id', async (req, res) => {
     await group.save();
 
     // Populate places for response
-    await group.populate('places', 'properties.displayName geometry');
+    await group.populate('places', 'properties.displayName');
 
     res.status(200).json(group);
   } catch (error) {

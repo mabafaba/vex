@@ -106,6 +106,12 @@
       .tab-content:not(.active) {
         display: none !important;
       }
+      
+      #create-action-btn:hover,
+      #create-group-btn:hover {
+        background: rgba(138, 43, 226, 0.5);
+        border-color: #8a2be2;
+      }
     </style>
   </head>
   <body>
@@ -122,12 +128,14 @@
       <div id="create-tab" class="tab-content">
         <div class="section">
           <h2>Create Action</h2>
-          <action-form></action-form>
+          <p style="margin-bottom: 15px; color: #999;">Click the button below to create a new action:</p>
+          <button id="create-action-btn" style="background: rgba(138, 43, 226, 0.3); color: white; padding: 10px 20px; border: 1px dashed #8b0000; border-radius: 4px; cursor: pointer; font-size: 16px; font-family: 'Courier New', monospace; transition: background 0.2s, border-color 0.2s;">Create Action</button>
         </div>
         
         <div class="section">
           <h2>Create Group</h2>
-          <group-form></group-form>
+          <p style="margin-bottom: 15px; color: #999;">Click the button below to create a new group:</p>
+          <button id="create-group-btn" style="background: rgba(138, 43, 226, 0.3); color: white; padding: 10px 20px; border: 1px dashed #8b0000; border-radius: 4px; cursor: pointer; font-size: 16px; font-family: 'Courier New', monospace; transition: background 0.2s, border-color 0.2s;">Create Group</button>
         </div>
       </div>
       
@@ -162,6 +170,10 @@
       </div>
     </div>
     
+    <!-- Create components (modals) -->
+    <action-create></action-create>
+    <group-create></group-create>
+    
     <!-- Edit components (modals) -->
     <action-edit></action-edit>
     <group-edit></group-edit>
@@ -185,6 +197,8 @@
     <!-- Load action service components -->
     <script type="module" src="/vex/actions/static/action-form.js"></script>
     <script type="module" src="/vex/actions/static/group-form.js"></script>
+    <script type="module" src="/vex/actions/static/action-create.js"></script>
+    <script type="module" src="/vex/actions/static/group-create.js"></script>
     <script type="module" src="/vex/actions/static/action-edit.js"></script>
     <script type="module" src="/vex/actions/static/group-edit.js"></script>
     <script type="module" src="/vex/actions/static/action-timeline.js"></script>
@@ -192,9 +206,28 @@
     <script type="module" src="/vex/actions/static/action-map.js"></script>
     
     <script>
+      // Get create modal components
+      const actionCreate = document.querySelector('action-create');
+      const groupCreate = document.querySelector('group-create');
+      
       // Get edit modal components
       const actionEdit = document.querySelector('action-edit');
       const groupEdit = document.querySelector('group-edit');
+      
+      // Handle create button clicks
+      const createActionBtn = document.getElementById('create-action-btn');
+      if (createActionBtn && actionCreate) {
+        createActionBtn.addEventListener('click', () => {
+          actionCreate.open();
+        });
+      }
+      
+      const createGroupBtn = document.getElementById('create-group-btn');
+      if (createGroupBtn && groupCreate) {
+        createGroupBtn.addEventListener('click', () => {
+          groupCreate.open();
+        });
+      }
 
       // Handle edit events from tag selectors
       document.addEventListener('edit-action', (e) => {
@@ -212,13 +245,33 @@
       });
 
       // Listen for saved events to refresh views
+      const refreshViews = () => {
+        // Refresh timeline, network, and map if they exist
+        const timeline = document.querySelector('action-timeline');
+        if (timeline && timeline.loadActions) {
+          timeline.loadActions();
+        }
+        const network = document.querySelector('action-network');
+        if (network && network.loadData) {
+          network.loadData();
+        }
+        const map = document.querySelector('action-map');
+        if (map && map.loadData) {
+          map.loadData();
+        }
+      };
+      
+      if (actionCreate) {
+        actionCreate.addEventListener('action-saved', refreshViews);
+      }
+      
       if (actionEdit) {
-        actionEdit.addEventListener('action-saved', () => {
-          // Refresh timeline, network, and map if they exist
-          const timeline = document.querySelector('action-timeline');
-          if (timeline && timeline.loadActions) {
-            timeline.loadActions();
-          }
+        actionEdit.addEventListener('action-saved', refreshViews);
+      }
+
+      if (groupCreate) {
+        groupCreate.addEventListener('group-saved', () => {
+          // Refresh network and map if they exist
           const network = document.querySelector('action-network');
           if (network && network.loadData) {
             network.loadData();
